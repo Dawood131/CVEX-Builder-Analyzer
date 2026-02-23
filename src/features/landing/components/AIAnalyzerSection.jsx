@@ -54,7 +54,7 @@ function AIAnalyzerSection({ navigate }) {
                         <div className="w-5 h-5 rounded-md bg-gradient-to-br from-amber-400 to-orange-500 flex items-center justify-center">
                             <FaBrain size={10} className="text-white" />
                         </div>
-                        AI-Powered Analysis — New Feature
+                        AI-Powered Analysis
                     </div>
                     <h2 className="text-3xl sm:text-4xl lg:text-5xl font-extrabold text-white tracking-tight">
                         Optimize Your Resume with{' '}

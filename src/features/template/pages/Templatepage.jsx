@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from "react";
+import React, { useState, useMemo, useEffect } from "react";
 import { useCV } from "../../../context/CVContext";
 import { getTemplatesByCategory, getTemplateById } from "../../../utils/helper";
 import { Button } from "../../../shared/ui/UIComponents";
@@ -32,6 +32,11 @@ function TemplatesPage() {
 
   const [filter, setFilter] = useState("all");
   const [search, setSearch] = useState("");
+  
+  useEffect(() => {
+    window.scrollTo(0, 0);
+  }, []);
+
 
   // Filter templates safely
   const filtered = useMemo(() => {

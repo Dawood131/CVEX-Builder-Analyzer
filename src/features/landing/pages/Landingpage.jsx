@@ -1,4 +1,4 @@
-import React from 'react'
+import React, { useEffect } from 'react'
 import Navbar from '../../../shared/layout/Navbar'
 import HeroSection from '../components/HeroSection'
 import { useNavigate } from 'react-router-dom';
@@ -13,6 +13,11 @@ import TemplateSection from '../../template/components/TemplateSection';
 
 const Landingpage = () => {
     const navigate = useNavigate();
+
+    useEffect(() => {
+        window.scrollTo(0, 0);
+    }, []);
+
     return (
         <div>
             <Navbar navigate={navigate} />

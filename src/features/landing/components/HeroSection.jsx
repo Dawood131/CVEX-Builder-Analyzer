@@ -21,7 +21,7 @@ function HeroSection({ navigate }) {
   ];
 
   return (
-    <section className="relative h- flex items-center overflow-hidden pt-16 bg-[var(--surface-50)] dark:bg-[var(--surface-50)]">
+    <section className="relative h- flex items-center overflow-hidden md:pt-16 pt-10 bg-[var(--surface-50)] dark:bg-[var(--surface-50)]">
 
       {/* Background Decorations */}
       <div className="absolute inset-0 overflow-hidden pointer-events-none">
@@ -47,14 +47,13 @@ function HeroSection({ navigate }) {
             </div>
 
             <h1 className="text-4xl sm:text-5xl lg:text-6xl font-extrabold animate-slideUp text-[var(--surface-700)] dark:text-[var(--surface-800)]">
-              Create a Professional CV
+              Create & Analyze Your CV
               <span className="gradient-text block mt-1">That Gets You Hired</span>
             </h1>
 
             <p className="mt-6 text-lg sm:text-xl text-[var(--surface-700)] dark:text-[var(--surface-800)] max-w-xl mx-auto lg:mx-0 animate-slideUp stagger-1">
-              Build modern, ATS-friendly resumes in minutes with CVEX. Choose from premium templates, customize everything, and export a pixel-perfect PDF.
+              Build modern, ATS-friendly resumes in minutes with CVEX, or upload your existing CV to analyze it instantly and get actionable feedback to boost your chances of getting hired.
             </p>
-
             {/* CTA */}
             <div className="flex flex-col sm:flex-row gap-4 mt-8 justify-center lg:justify-start animate-slideUp stagger-2">
               <Button variant="primary" size="xl" className="group" onClick={() => navigate('/templates')}>

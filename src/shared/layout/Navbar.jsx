@@ -46,7 +46,7 @@ function Navbar({ navigate }) {
     };
 
     return (
-        <nav className="fixed top-0 left-0 right-0 z-50 glass transition-all duration-300">
+        <nav class="fixed top-0 left-0 right-0 z-50 bg-[var(--surface-50)]/60 backdrop-blur-xl border border-[var(--surface-50)]/30 transition-all duration-300">
             <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
                 <div className="flex items-center justify-between h-16">
                     {/* Logo */}
@@ -139,18 +139,16 @@ function Navbar({ navigate }) {
     ${mobileOpen ? 'max-h-[500px] py-3 opacity-100' : 'max-h-0 py-0 opacity-0'}
   `}
             >
-                {['Features', 'Templates', 'How It Works'].map((link) => (
-                    <button
-                        key={link}
-                        className="block py-2 text-sm font-medium w-full text-left text-[var(--surface-900)] dark:text-[var(--surface-800)] hover:text-[var(--brand-500)] transition-colors"
-                        onClick={() => {
-                            scrollToSection(link.toLowerCase().replace(/\s+/g, '-'));
-                            setMobileOpen(false);
-                        }}
-                    >
-                        {link}
-                    </button>
-                ))}
+                <button
+                    type="button"
+                    className="py-2 text-sm font-medium w-full text-left text-[var(--surface-900)] dark:text-[var(--surface-800)] hover:text-[var(--brand-500)] transition-colors"
+                    onClick={() => {
+                        setMobileOpen(false);
+                        navigate('/templates');
+                    }}
+                >
+                    Templates
+                </button>
 
                 <button
                     type="button"
@@ -162,6 +160,19 @@ function Navbar({ navigate }) {
                 >
                     AI Analyzer
                 </button>
+
+                {['Features', 'How It Works'].map((link) => (
+                    <button
+                        key={link}
+                        className="block py-2 text-sm font-medium w-full text-left text-[var(--surface-900)] dark:text-[var(--surface-800)] hover:text-[var(--brand-500)] transition-colors"
+                        onClick={() => {
+                            scrollToSection(link.toLowerCase().replace(/\s+/g, '-'));
+                            setMobileOpen(false);
+                        }}
+                    >
+                        {link}
+                    </button>
+                ))}
 
                 <div className="flex gap-2 mt-2">
                     {mobileOpen && (
