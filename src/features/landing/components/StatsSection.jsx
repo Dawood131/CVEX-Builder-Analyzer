@@ -65,9 +65,9 @@ function StatsSection() {
         {stats.map((s, i) => (
           <div key={s.label} className="text-center rounded-2xl">
             {/* Count number */}
-            <div className="text-3xl sm:text-4xl font-extrabold text-[var(--brand-500)] gradient-text">
-              {counts[i]}
-              {counts[i] === s.value ? s.suffix : ""}
+            <div className="text-3xl sm:text-4xl font-extrabold text-[var(--brand-500)] gradient-text flex justify-center items-center gap-1">
+              <span>{counts[i]}</span>
+              <span>{s.suffix}</span>
             </div>
 
             {/* Label */}

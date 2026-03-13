@@ -21,7 +21,7 @@ function HeroSection({ navigate }) {
   ];
 
   return (
-    <section className="relative h- flex items-center overflow-hidden md:pt-16 pt-10 bg-[var(--surface-50)] dark:bg-[var(--surface-50)]">
+    <section className="relative h- flex items-center overflow-hidden md:pt-1 pt-10 bg-[var(--surface-50)] dark:bg-[var(--surface-50)]">
 
       {/* Background Decorations */}
       <div className="absolute inset-0 overflow-hidden pointer-events-none">

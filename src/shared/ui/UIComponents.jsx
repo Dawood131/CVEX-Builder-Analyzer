@@ -16,7 +16,7 @@ function Button({ children, variant = 'primary', size = 'md', className = '', on
       }
     },
     secondary: {
-      className: 'backdrop-blur-lg text-[var(--brand-700)]  hover:scale-105',
+      className: 'backdrop-blur-lg text-[var(--brand-500)]  hover:scale-105',
       style: {
         background: 'bg-[var(--brand-600)]',
         boxShadow: '0 4px 14px -3px rgba(99,102,241,0.4)',
@@ -55,35 +55,48 @@ function Button({ children, variant = 'primary', size = 'md', className = '', on
 }
 
 // ---- Modal ----
-function Modal({ open, onClose, title, children, maxWidth = 'max-w-xl' }) {
+import { LuX } from "react-icons/lu";
+
+function Modal({ open, onClose, title, children, maxWidth = "max-w-xl" }) {
   if (!open) return null;
 
   return ReactDOM.createPortal(
     <div
       className="fixed inset-0 z-[1000] flex items-center justify-center bg-black/50 backdrop-blur-sm animate-fadeIn"
-      onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}
+      onClick={(e) => {
+        if (e.target === e.currentTarget) onClose();
+      }}
     >
-      <div className={cn('bg-[var(--surface-50)] dark:bg-[var(--surface-800)] rounded-2xl w-[90%] max-h-[85vh] overflow-y-auto shadow-2xl animate-scaleIn', maxWidth)}>
-        <div className="flex items-center justify-between px-6 py-4 border-b border-[var(--surface-200)] dark:border-[var(--surface-700)]">
-          <h3 className="font-bold text-lg text-[var(--surface-900)] dark:text-[var(--surface-100)]">{title}</h3>
+      <div
+        className={cn(
+          "bg-[var(--surface-100)] rounded-2xl w-[90%] max-h-[85vh] overflow-y-auto shadow-2xl animate-scaleIn",
+          maxWidth
+        )}
+      >
+        {/* Modal Header */}
+        <div className="flex items-center justify-between px-6 py-4 border-b border-[var(--surface-200)]">
+          <h3 className="font-bold text-lg text-[var(--surface-900)]">{title}</h3>
           <Button variant="ghost" size="sm" onClick={onClose}>
-            <i className="fas fa-times" />
+            <LuX size={20} /> {/* <- Proper cross icon */}
           </Button>
         </div>
-        <div className="px-6 py-4 text-[var(--surface-900)] dark:text-[var(--surface-100)]">{children}</div>
+
+        {/* Modal Content */}
+        <div className="px-6 py-4 text-[var(--surface-900)]">{children}</div>
       </div>
     </div>,
     document.body
   );
 }
 
+
 // ---- Toggle Switch ----
 function Toggle({ active, onChange, label }) {
   return (
     <div className="flex items-center justify-between">
-      {label && <span className="text-sm font-medium text-[var(--surface-900)] dark:text-[var(--surface-100)]">{label}</span>}
+      {label && <span className="text-sm font-medium text-[var(--surface-900)]">{label}</span>}
       <div
-        className={cn('relative w-11 h-6 rounded-full cursor-pointer transition-all flex-shrink-0', active ? 'bg-[var(--brand-500)]' : 'bg-[var(--surface-200)] dark:bg-[var(--surface-700)]')}
+        className={cn('relative w-11 h-6 rounded-full cursor-pointer transition-all flex-shrink-0', active ? 'bg-[var(--brand-500)]' : 'bg-[var(--surface-200)]')}
         onClick={() => onChange(!active)}
       >
         <div className={cn('absolute top-0.5 w-5 h-5 bg-white rounded-full shadow transition-transform', active ? 'translate-x-[22px]' : 'translate-x-0.5')} />
@@ -91,6 +104,66 @@ function Toggle({ active, onChange, label }) {
     </div>
   );
 }
+
+import { useState, useRef, useEffect } from "react";
+import { LuChevronDown } from "react-icons/lu";
+
+const CustomSelect = ({ value, options, onChange, width = "w-full" }) => {
+  const [open, setOpen] = useState(false);
+  const ref = useRef();
+
+  // Close on outside click
+  useEffect(() => {
+    const handleClickOutside = (e) => {
+      if (ref.current && !ref.current.contains(e.target)) {
+        setOpen(false);
+      }
+    };
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
+
+  return (
+    <div ref={ref} className={`relative ${width}`}>
+
+      {/* Trigger */}
+      <button
+        type="button"
+        onClick={() => setOpen(!open)}
+        className="w-full flex items-center justify-between px-3 py-2 border border-[var(--surface-200)] rounded-[0.625rem] text-sm bg-[var(--surface-100)] text-[var(--surface-900)] focus:outline-none transition"
+      >
+        <span className="truncate">
+          {options.find(o => o.value === value)?.label}
+        </span>
+        <LuChevronDown
+          className={`w-4 h-4 transition-transform ${open ? "rotate-180" : ""}`}
+        />
+      </button>
+
+      {/* Dropdown */}
+      {open && (
+        <div className="absolute z-50 mt-2 w-full bg-white border border-[var(--surface-200)] rounded-xl shadow-lg overflow-hidden">
+          {options.map((opt) => (
+            <div
+              key={opt.value}
+              onClick={() => {
+                onChange(opt.value);
+                setOpen(false);
+              }}
+              className={`px-3 py-2 text-sm cursor-pointer transition
+                ${value === opt.value
+                  ? "bg-brand-500 text-white"
+                  : "hover:bg-[var(--surface-100)]"
+                }`}
+            >
+              {opt.label}
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+};
 
 // ---- Toast Container ----
 function ToastContainer() {
@@ -119,8 +192,8 @@ function ToastContainer() {
 function FormField({ label, type = 'text', value, onChange, placeholder, required, hint, error, half, rows }) {
   const id = React.useRef('f_' + Math.random().toString(36).substr(2, 8)).current;
   const inputCls = cn(
-    'w-full px-3.5 py-2.5 border-[1.5px] rounded-[0.625rem] text-sm transition-all bg-[var(--surface-50)] dark:bg-[var(--surface-800)] text-[var(--surface-900)] dark:text-[var(--surface-100)] placeholder:text-[var(--surface-400)] focus:outline-none focus:border-[var(--brand-500)] focus:ring-[3px] focus:ring-[var(--brand-500)]/10',
-    error ? 'border-red-400' : 'border-[var(--surface-200)] dark:border-[var(--surface-700)]'
+    'w-full px-3.5 py-2.5 border-[1px] rounded-[0.625rem] text-sm transition-all bg-[var(--surface-50)] text-[var(--surface-900)]  placeholder:text-[var(--surface-500)] focus:outline-none focus:border-[var(--brand-500)] focus:ring-[3px] focus:ring-[var(--brand-500)]/10',
+    error ? 'border-red-400' : 'border-[var(--surface-400)]'
   );
 
   const renderInput = () => {
@@ -162,12 +235,12 @@ function FormField({ label, type = 'text', value, onChange, placeholder, require
 
   return (
     <div className={half ? 'flex-1' : 'w-full'}>
-      <label htmlFor={id} className="block text-[0.8125rem] font-semibold text-[var(--surface-500)] dark:text-[var(--surface-400)] mb-1.5">
+      <label htmlFor={id} className="block text-[0.8125rem] font-semibold text-[var(--surface-900)] mb-1.5">
         {label}
         {required && <span className="text-red-500 ml-0.5">*</span>}
       </label>
       {renderInput()}
-      {hint && <p className="text-xs text-[var(--surface-400)] mt-1">{hint}</p>}
+      {hint && <p className="text-xs text-[var(--surface-900)] mt-1">{hint}</p>}
       {error && <p className="text-xs text-red-500 mt-1">{error}</p>}
     </div>
   );
@@ -257,4 +330,137 @@ function TemplateThumbnail({ template, primaryColor }) {
   );
 }
 
-export { Button, Modal, Toggle, ToastContainer, FormField, ColorSwatch, TemplateThumbnail };
+import { Listbox, Transition } from "@headlessui/react";
+import { Fragment } from "react";
+import { HiCheck, HiChevronDown } from "react-icons/hi";
+
+function SmoothDropdown({ options, value, onChange, label }) {
+  const selectedOption = options.find(o => o.id === value);
+
+  return (
+    <div className="w-full">
+      {label && <label className="block text-[0.8125rem] font-semibold text-[var(--surface-900)] mb-1.5">{label}</label>}
+      <Listbox value={value} onChange={onChange}>
+        <div className="relative">
+          <Listbox.Button className="relative w-full cursor-pointer rounded-[0.625rem] bg-[var(--surface-100)] border-[1.5px] border-[var(--surface-200)] py-2 pl-3 pr-10 text-left text-sm font-mono text-[var(--surface-900)] focus:outline-none  transition-all duration-200">
+            <span className="block truncate">{selectedOption?.name}</span>
+            <span className="pointer-events-none absolute inset-y-0 right-0 flex items-center pr-3">
+              <HiChevronDown className="h-4 w-4 text-[var(--surface-400)]" aria-hidden="true" />
+            </span>
+          </Listbox.Button>
+
+          <Transition
+            as={Fragment}
+            leave="transition ease-in duration-150"
+            leaveFrom="opacity-100"
+            leaveTo="opacity-0"
+          >
+            <Listbox.Options className="absolute mt-1 max-h-60 w-full overflow-auto rounded-md bg-[var(--surface-100)] py-1 text-sm shadow-lg ring-1 ring-[var(--surface-300)] ring-opacity-5 focus:outline-none z-50">
+              {options.map((option) => (
+                <Listbox.Option
+                  key={option.id}
+                  className={({ active }) =>
+                    `cursor-pointer select-none relative py-2 pl-3 pr-9  ${active ? "bg-[var(--brand-100)] text-[var(--brand-700)]" : "text-[var(--surface-900)]"
+                    }`
+                  }
+                  value={option.id}
+                >
+                  {({ selected, active }) => (
+                    <>
+                      <span className={`block truncate ${selected ? "font-semibold" : "font-normal"}`}>
+                        {option.name}
+                      </span>
+                      {selected ? (
+                        <span className={`absolute inset-y-0 right-0 flex items-center pr-4 ${active ? "text-[var(--brand-700)]" : "text-[var(--surface-400)]"}`}>
+                          <HiCheck className="h-4 w-4" />
+                        </span>
+                      ) : null}
+                    </>
+                  )}
+                </Listbox.Option>
+              ))}
+            </Listbox.Options>
+          </Transition>
+        </div>
+      </Listbox>
+    </div>
+  );
+}
+
+import { HexColorPicker } from "react-colorful";
+import tinycolor from "tinycolor2";
+import { motion, AnimatePresence } from "framer-motion";
+
+function AdvancedColorPicker({ color, onChange, presets = [] }) {
+  const [open, setOpen] = useState(false);
+  const [inputValue, setInputValue] = useState(color);
+  const wrapperRef = useRef(null);
+
+  // Close dropdown if clicked outside
+  useEffect(() => {
+    const handleClickOutside = (e) => {
+      if (wrapperRef.current && !wrapperRef.current.contains(e.target)) {
+        setOpen(false);
+      }
+    };
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
+
+  // Update input when color prop changes
+  useEffect(() => {
+    setInputValue(color);
+  }, [color]);
+
+  const handleInputChange = (val) => {
+    setInputValue(val);
+    const tc = tinycolor(val);
+    if (tc.isValid()) {
+      onChange(tc.toHexString());
+    }
+  };
+
+  return (
+    <div ref={wrapperRef} className="relative inline-block flex-1">
+      {/* Color Preview */}
+      <button
+        onClick={() => setOpen(!open)}
+        className="w-12 h-12 rounded-lg border-2 border-[var(--surface-200)] shadow-inner"
+        style={{ backgroundColor: color }}
+      />
+
+      <AnimatePresence>
+        {open && (
+          <motion.div
+            initial={{ opacity: 0, y: -10 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -10 }}
+            transition={{ duration: 0.2 }}
+            className="absolute mt-2 w-64 bg-[var(--surface-100)] border border-[var(--surface-200)] rounded-lg shadow-lg p-4 z-50"
+          >
+            {/* Presets */}
+            {presets.length > 0 && (
+              <div className="grid grid-cols-5 gap-2 mb-3">
+                {presets.map((c) => (
+                  <button
+                    key={c}
+                    className={`w-10 h-10 rounded-lg border-2 transition-all duration-200 ${c === color ? "border-[var(--brand-500)] scale-105" : "border-transparent hover:scale-110"
+                      }`}
+                    style={{ backgroundColor: c }}
+                    onClick={() => onChange(c)}
+                  />
+                ))}
+              </div>
+            )}
+
+            {/* Spectrum Picker */}
+            <HexColorPicker color={color} onChange={onChange} />
+
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </div>
+  );
+}
+
+export { Button, Modal, Toggle, ToastContainer, FormField, ColorSwatch, TemplateThumbnail, CustomSelect, SmoothDropdown, AdvancedColorPicker };

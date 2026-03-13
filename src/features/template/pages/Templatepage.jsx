@@ -12,19 +12,15 @@ import {
   FaArrowLeft,
   FaMoon,
   FaSun,
-  FaSearch,
-  FaFolderOpen,
-  FaTrash
+  FaSearch
 } from "react-icons/fa";
 
 function TemplatesPage() {
   const navigate = useNavigate();
   const {
     cvData,
-    savedCVs = [],
     loadVersion,
     deleteVersion,
-    newCV,
     showToast,
     darkMode,
     setDarkMode,
@@ -32,7 +28,7 @@ function TemplatesPage() {
 
   const [filter, setFilter] = useState("all");
   const [search, setSearch] = useState("");
-  
+
   useEffect(() => {
     window.scrollTo(0, 0);
   }, []);
@@ -54,28 +50,18 @@ function TemplatesPage() {
   }, [filter, search]);
 
   const selectTpl = (id) => {
-    const tpl = getTemplateById(id);
-    newCV(id, tpl?.colors?.[0] || "#4f46e5");
+    const tpl = getTemplateById(id, TEMPLATES);
+    cvData.design = cvData.design || {};
+    cvData.design.layout = tpl.layout || "single";
+    cvData.design.template = tpl.id;
+    cvData.design.primaryColor = tpl.colors?.[0] || "#4f46e5";
     navigate("/editor");
-  };
-
-  const loadSaved = (id) => {
-    loadVersion(id);
-    navigate("/editor");
-    showToast("CV loaded successfully!", "success");
-  };
-
-  const deleteSaved = (id) => {
-    if (confirm("Delete this saved CV?")) {
-      deleteVersion(id);
-      showToast("CV deleted", "success");
-    }
   };
 
   return (
     <div className="animate-fadeIn min-h-screen bg-[var(--surface-50)]">
       {/* Navbar */}
-      <nav className="sticky top-0 z-50 glass border-b border-[var(--surface-200)]">
+      <nav className="sticky top-0 z-50 bg-[var(--surface-50)]/60 backdrop-blur-xl border-b border-[var(--surface-400)]/20">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex items-center justify-between h-16">
           <div className="flex items-center gap-3">
             <Button variant="ghost" size="sm" onClick={() => navigate("/")}>
@@ -150,60 +136,6 @@ function TemplatesPage() {
             />
           ))}
         </div>
-
-        {/* Saved CVs */}
-        {savedCVs?.length > 0 && (
-          <div className="mt-16">
-            <h2 className="text-2xl font-bold mb-6 flex items-center gap-2">
-              <FaFolderOpen className="text-brand-500" />
-              Your Saved CVs
-            </h2>
-            <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
-              {savedCVs.map((cv) => (
-                <div
-                  key={cv.id}
-                  className="bg-white dark:bg-surface-800 rounded-xl border border-surface-200 dark:border-surface-700 p-4 card-hover"
-                >
-                  <div className="flex items-center justify-between mb-3">
-                    <div>
-                      <div className="font-semibold">{cv.name}</div>
-                      <div className="text-xs text-surface-400">
-                        {new Date(cv.savedAt).toLocaleDateString()}
-                      </div>
-                    </div>
-                    <div className="flex gap-1">
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => loadSaved(cv.id)}
-                        title="Load"
-                      >
-                        <FaFolderOpen />
-                      </Button>
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        className="text-red-500"
-                        onClick={() => deleteSaved(cv.id)}
-                        title="Delete"
-                      >
-                        <FaTrash />
-                      </Button>
-                    </div>
-                  </div>
-                  <Button
-                    variant="primary"
-                    size="sm"
-                    className="w-full"
-                    onClick={() => loadSaved(cv.id)}
-                  >
-                    Continue Editing
-                  </Button>
-                </div>
-              ))}
-            </div>
-          </div>
-        )}
       </div>
     </div>
   );

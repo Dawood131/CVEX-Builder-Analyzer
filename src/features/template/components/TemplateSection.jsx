@@ -12,16 +12,19 @@ import { FaLayerGroup, FaTableCellsLarge } from "react-icons/fa6";
 
 function TemplateSection() {
     const navigate = useNavigate();
-    const { newCV } = useCV();
+    const { newCV, cvData, } = useCV();
 
     const selectTpl = (id) => {
         const tpl = getTemplateById(id, TEMPLATES);
-        newCV(id, tpl ? tpl.colors[0] : '#4f46e5');
-        navigate('/editor');
+        cvData.design = cvData.design || {};
+        cvData.design.layout = tpl.layout || "single";
+        cvData.design.template = tpl.id;
+        cvData.design.primaryColor = tpl.colors?.[0] || "#4f46e5";
+        navigate("/editor");
     };
 
     // Take only the first 8 templates
-    const templatesToShow = TEMPLATES.slice(0, 8);
+    const templatesToShow = TEMPLATES.slice(0, 4);
 
     return (
         <section id="templates" className="py-20 lg:py-28 bg-[var(--surface-50)]">

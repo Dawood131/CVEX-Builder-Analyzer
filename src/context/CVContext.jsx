@@ -137,6 +137,9 @@ function mergeDefaults(saved) {
 // ---- Context ----
 const CVContext = createContext(null);
 
+// Max versions in history
+const MAX_HISTORY_VERSIONS = 20;
+
 export function CVProvider({ children }) {
   const loadInitial = () => {
     try {
@@ -159,7 +162,7 @@ export function CVProvider({ children }) {
 
   const toggleDarkMode = useCallback(() => setDarkModeState(prev => !prev), []);
 
-  // Saved CVs
+  // Saved CVs — manual versions only
   const [savedCVs, setSavedCVs] = useState(() => {
     try { return JSON.parse(localStorage.getItem('cvex_savedCVs') || '[]'); } catch { return []; }
   });
@@ -206,12 +209,12 @@ export function CVProvider({ children }) {
     }
   }, []);
 
-  // Autosave
+  // Autosave to localStorage only — NOT to history
   const saveTimer = useRef(null);
   useEffect(() => {
     clearTimeout(saveTimer.current);
     saveTimer.current = setTimeout(() => {
-      try { localStorage.setItem('cvex_currentCV', JSON.stringify(cvData)); } catch {}
+      try { localStorage.setItem('cvex_currentCV', JSON.stringify(cvData)); } catch { }
     }, 500);
     return () => clearTimeout(saveTimer.current);
   }, [cvData]);
@@ -220,11 +223,23 @@ export function CVProvider({ children }) {
   const [activeSection, setActiveSection] = useState('personal');
   const [previewScale, setPreviewScale] = useState(0.55);
 
-  // Save/Load/Delete versions
+  // Save version — MANUAL only, called explicitly by user
+  // Auto-saves (autosave timer) do NOT call this
   const saveVersion = useCallback((name) => {
-    const cv = { id: uid(), name: name || cvData.meta.cvName, data: JSON.parse(JSON.stringify(cvData)), savedAt: Date.now() };
-    setSavedCVs(prev => [...prev, cv]);
-    return cv;
+    const newVersion = {
+      id: Date.now().toString(),
+      name,
+      savedAt: Date.now(),
+      data: JSON.parse(JSON.stringify(cvData)), // deep copy
+      layout: cvData.design?.layout,
+    };
+    setSavedCVs(prev => {
+      // Keep only latest MAX_HISTORY_VERSIONS, oldest removed first
+      const updated = [...prev, newVersion];
+      return updated.length > MAX_HISTORY_VERSIONS
+        ? updated.slice(updated.length - MAX_HISTORY_VERSIONS)
+        : updated;
+    });
   }, [cvData]);
 
   const loadVersion = useCallback((id) => {
@@ -241,6 +256,16 @@ export function CVProvider({ children }) {
     historyRef.current = { stack: [], index: -1 };
   }, []);
 
+  // Toast System
+  const [toast, setToast] = useState(null);
+
+  const showToast = useCallback((message, type = "info") => {
+    setToast({ message, type });
+    setTimeout(() => {
+      setToast(null);
+    }, 3000);
+  }, []);
+
   return (
     <CVContext.Provider value={{
       cvData, dispatch,
@@ -249,7 +274,9 @@ export function CVProvider({ children }) {
       undo, redo, canUndo, canRedo,
       activeSection, setActiveSection,
       previewScale, setPreviewScale,
-      DEFAULT_CV, uid
+      DEFAULT_CV, uid,
+      showToast,
+      toast
     }}>
       {children}
     </CVContext.Provider>

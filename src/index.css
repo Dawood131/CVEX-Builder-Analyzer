@@ -271,23 +271,28 @@
   animation: gradientMove 8s ease infinite;
 }
 
+.dragging {
+  opacity: 0.5;
+  transform: scale(1.05);
+  z-index: 50;
+}
+
 /* Glass */
-/* ===== Glass Effect ===== */
-/* Glassmorphism Card / Navbar */
 .glass {
-  background: rgba(255, 255, 255, 0.6); 
+  background: rgba(255, 255, 255, 0.6);
+  background: var(--surface-50);
   border: 1px solid rgba(255, 255, 255, 0.2);
   backdrop-filter: blur(16px) saturate(180%);
   -webkit-backdrop-filter: blur(16px) saturate(180%);
-  transform: translateZ(0); 
-  will-change: backdrop-filter; 
+  transform: translateZ(0);
+  will-change: backdrop-filter;
   box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
   transition: all 0.3s ease;
 }
 
 /* Dark Mode */
 .dark .glass {
-  background: rgba(15, 23, 42, 0.6);
+  background: var(--surface-50);
   border: 1px solid rgba(71, 85, 105, 0.3);
   backdrop-filter: blur(16px) saturate(180%);
   -webkit-backdrop-filter: blur(16px) saturate(180%);
@@ -334,7 +339,7 @@
 }
 
 /* CV Page */
-.cv-page {
+/* .cv-page {
   width: 210mm;
   min-height: 297mm;
   background: white;
@@ -344,6 +349,26 @@
   overflow: hidden;
 }
 
+.page-break-safe {
+  page-break-inside: avoid;
+  break-inside: avoid;
+} */
+
+/* Global CSS (or in tailwind global styles) */
+input:-webkit-autofill,
+textarea:-webkit-autofill,
+select:-webkit-autofill {
+  -webkit-box-shadow: 0 0 0px 1000px var(--surface-50) inset !important;
+  -webkit-text-fill-color: var(--surface-900) !important;
+  transition: background-color 5000s ease-in-out 0s;
+}
+
+input:-webkit-autofill::placeholder,
+textarea:-webkit-autofill::placeholder,
+select:-webkit-autofill::placeholder {
+  color: var(--surface-500) !important;
+}
+
 /* Reveal on scroll */
 /* ================= SCROLL REVEAL SYSTEM ================= */
 
@@ -351,7 +376,7 @@
   opacity: 0;
   transform: translateY(40px);
   transition: opacity 0.8s cubic-bezier(0.4, 0, 0.2, 1),
-              transform 0.8s cubic-bezier(0.4, 0, 0.2, 1);
+    transform 0.8s cubic-bezier(0.4, 0, 0.2, 1);
   will-change: opacity, transform;
 }
 
@@ -384,13 +409,24 @@
 }
 
 /* Stagger */
-.reveal-delay-1 { transition-delay: 0.1s; }
-.reveal-delay-2 { transition-delay: 0.2s; }
-.reveal-delay-3 { transition-delay: 0.3s; }
-.reveal-delay-4 { transition-delay: 0.4s; }
+.reveal-delay-1 {
+  transition-delay: 0.1s;
+}
+
+.reveal-delay-2 {
+  transition-delay: 0.2s;
+}
+
+.reveal-delay-3 {
+  transition-delay: 0.3s;
+}
+
+.reveal-delay-4 {
+  transition-delay: 0.4s;
+}
 
 /* Print */
-@media print {
+/* @media print {
   body {
     margin: 0;
     padding: 0
@@ -401,8 +437,8 @@
   }
 
   .cv-page {
-    width: 210mm;
-    min-height: 297mm;
+    width: 794px;
+    min-height: 1123px;
     margin: 0;
     padding: 0;
     box-shadow: none
@@ -414,4 +450,5 @@
     width: 100%;
     min-height: auto
   }
-}
+} */
+

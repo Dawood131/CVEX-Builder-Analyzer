@@ -3,7 +3,9 @@ import {
   FaBriefcase,
   FaBolt,
   FaMinus,
-  FaPalette
+  FaPalette,
+  FaUser, FaAlignLeft, FaGraduationCap, FaStar, 
+  FaCode, FaCertificate, FaGlobe, FaTrophy, FaHeart, FaUsers
 } from "react-icons/fa";
 
 const TEMPLATES = [
@@ -55,17 +57,17 @@ const FONT_OPTIONS = [
 ];
 
 const SECTION_META = {
-  personal:       { icon: 'fa-user', label: 'Personal Information', mandatory: true },
-  summary:        { icon: 'fa-align-left', label: 'Professional Summary', mandatory: true },
-  experience:     { icon: 'fa-briefcase', label: 'Work Experience', mandatory: true },
-  education:      { icon: 'fa-graduation-cap', label: 'Education', mandatory: true },
-  skills:         { icon: 'fa-star', label: 'Skills', mandatory: false },
-  projects:       { icon: 'fa-code', label: 'Projects', mandatory: false },
-  certifications: { icon: 'fa-certificate', label: 'Certifications', mandatory: false },
-  languages:      { icon: 'fa-globe', label: 'Languages', mandatory: false },
-  awards:         { icon: 'fa-trophy', label: 'Awards', mandatory: false },
-  hobbies:        { icon: 'fa-heart', label: 'Hobbies & Interests', mandatory: false },
-  references:     { icon: 'fa-users', label: 'References', mandatory: false },
+  personal:       { icon: FaUser, label: 'Personal Information', mandatory: true },
+  summary:        { icon: FaAlignLeft, label: 'Professional Summary', mandatory: true },
+  experience:     { icon: FaBriefcase, label: 'Work Experience', mandatory: true },
+  education:      { icon: FaGraduationCap, label: 'Education', mandatory: true },
+  skills:         { icon: FaStar, label: 'Skills', mandatory: false },
+  projects:       { icon: FaCode, label: 'Projects', mandatory: false },
+  certifications: { icon: FaCertificate, label: 'Certifications', mandatory: false },
+  languages:      { icon: FaGlobe, label: 'Languages', mandatory: false },
+  awards:         { icon: FaTrophy, label: 'Awards', mandatory: false },
+  hobbies:        { icon: FaHeart, label: 'Hobbies & Interests', mandatory: false },
+  references:     { icon: FaUsers, label: 'References', mandatory: false },
 };
 
 const FEATURES = [
