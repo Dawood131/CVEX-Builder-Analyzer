@@ -1,31 +1,27 @@
-import { useEffect } from "react";
-import { useLocation } from "react-router-dom";
+// hooks/useReveal.js
+import { useEffect, useRef, useState } from "react";
 
-export default function useScrollReveal() {
-  const location = useLocation();
+export default function useReveal(options = {}) {
+  const ref = useRef(null);
+  const [isVisible, setIsVisible] = useState(false);
 
   useEffect(() => {
-    const elements = document.querySelectorAll(
-      ".reveal, .reveal-left, .reveal-right"
-    );
+    const el = ref.current;
+    if (!el) return;
 
     const observer = new IntersectionObserver(
-      (entries, observerInstance) => {
-        entries.forEach((entry) => {
-          if (entry.isIntersecting) {
-            entry.target.classList.add("show");
-            observerInstance.unobserve(entry.target);
-          }
-        });
+      ([entry]) => {
+        if (entry.isIntersecting) {
+          setIsVisible(true);
+          observer.unobserve(el);
+        }
       },
-      {
-        threshold: 0.15,
-        rootMargin: "0px 0px -50px 0px",
-      }
+      { threshold: 0.1, rootMargin: "0px 0px -60px 0px", ...options }
     );
 
-    elements.forEach((el) => observer.observe(el));
-
+    observer.observe(el);
     return () => observer.disconnect();
-  }, [location]); // 👈 re-run on route change
+  }, []);
+
+  return { ref, isVisible };
 }

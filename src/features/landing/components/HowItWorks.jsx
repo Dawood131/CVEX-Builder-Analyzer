@@ -1,5 +1,6 @@
 import React from "react";
 import SectionHeader from "./SectionHeader";
+import { Reveal } from "../../../shared/ui/UIComponents";
 
 import { TbTemplate } from "react-icons/tb";
 import { BiEdit } from "react-icons/bi";
@@ -35,19 +36,18 @@ function HowItWorksSection() {
             const StepIcon = ICON_MAP[step.icon];
 
             return (
-              <div
+              <Reveal
                 key={i}
-                className={`
-                  reveal reveal-delay-${(i % 4) + 1}
-                  text-center rounded-2xl transition-all duration-300
-                `}
+                direction="up"
+                delay={i * 0.1}
+                className="text-center rounded-2xl transition-all duration-300"
               >
                 <div className="relative inline-flex mb-6">
-                  
+
                   {/* Icon Box */}
-                  <div className="w-16 h-16 rounded-2xl 
+                  <div className="w-16 h-16 rounded-2xl
                                   dark:bg-[var(--surface-300)]/20
-                                  flex items-center justify-center 
+                                  flex items-center justify-center
                                   transition-transform duration-300 hover:scale-110">
                     {StepIcon && (
                       <StepIcon className="text-2xl text-[var(--brand-600)]" />
@@ -55,8 +55,8 @@ function HowItWorksSection() {
                   </div>
 
                   {/* Step Number */}
-                  <div className="absolute -top-2 -right-2 w-7 h-7 rounded-full 
-                                  bg-[var(--brand-600)] text-white text-xs font-bold 
+                  <div className="absolute -top-2 -right-2 w-7 h-7 rounded-full
+                                  bg-[var(--brand-600)] text-white text-xs font-bold
                                   flex items-center justify-center shadow-md">
                     {i + 1}
                   </div>
@@ -69,7 +69,7 @@ function HowItWorksSection() {
                 <p className="text-[var(--muted)] text-sm leading-relaxed">
                   {step.desc}
                 </p>
-              </div>
+              </Reveal>
             );
           })}
         </div>

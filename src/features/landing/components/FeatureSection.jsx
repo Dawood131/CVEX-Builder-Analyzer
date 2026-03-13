@@ -1,17 +1,11 @@
 import React from "react";
 import SectionHeader from "./SectionHeader";
+import { Reveal } from "../../../shared/ui/UIComponents";
 import { FEATURES } from "../../../data/templates";
 
 import {
-  FaGem,
-  FaThLarge,
-  FaEye,
-  FaPalette,
-  FaArrowsAlt,
-  FaCopy,
-  FaRobot,
-  FaFilePdf,
-  FaMobileAlt
+  FaGem, FaThLarge, FaEye, FaPalette,
+  FaArrowsAlt, FaCopy, FaRobot, FaFilePdf, FaMobileAlt
 } from "react-icons/fa";
 
 const ICON_MAP = {
@@ -33,7 +27,6 @@ function FeaturesSection() {
     >
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
 
-        {/* Section Header */}
         <SectionHeader
           badge="Features"
           badgeIcon={FaGem}
@@ -41,22 +34,19 @@ function FeaturesSection() {
           subtitle="Powerful features to create the perfect CV"
         />
 
-        {/* Features Grid */}
         <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-8 mt-12">
           {FEATURES.map((f, i) => {
             const FeatureIcon = ICON_MAP[f.icon];
 
             return (
-              <div
+              <Reveal
                 key={i}
-                className={`
-                  reveal
-                  text-start rounded-2xl
-                    transition-transform duration-300 ease-out
-                    hover:scale-[1.03]
-                    bg-[var(--surface-50)] dark:bg-[var(--surface-200)]
-                    border border-[var(--border)] p-6
-                `}
+                direction="up"
+                className="text-start rounded-2xl
+                  transition-transform duration-300 ease-out
+                  hover:scale-[1.03]
+                  bg-[var(--surface-50)] dark:bg-[var(--surface-200)]
+                  border border-[var(--border)] p-6"
               >
                 {/* Icon Box */}
                 <div className="w-16 h-16 rounded-2xl flex items-center justify-center mb-6
@@ -76,7 +66,7 @@ function FeaturesSection() {
                 <p className="text-sm text-[var(--muted)] leading-relaxed">
                   {f.desc}
                 </p>
-              </div>
+              </Reveal>
             );
           })}
         </div>

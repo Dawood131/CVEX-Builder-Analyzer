@@ -463,4 +463,33 @@ function AdvancedColorPicker({ color, onChange, presets = [] }) {
   );
 }
 
-export { Button, Modal, Toggle, ToastContainer, FormField, ColorSwatch, TemplateThumbnail, CustomSelect, SmoothDropdown, AdvancedColorPicker };
+// components/Reveal.jsx
+import useReveal from "../../hooks/useScrollReveal";
+
+function Reveal({ children, direction = "up", delay = 0, className = "" }) {
+  const { ref, isVisible } = useReveal();
+
+  const directions = {
+    up:    { from: "translateY(40px)",  to: "translateY(0)" },
+    left:  { from: "translateX(-40px)", to: "translateX(0)" },
+    right: { from: "translateX(40px)",  to: "translateX(0)" },
+  };
+
+  const { from, to } = directions[direction] || directions.up;
+
+  return (
+    <div
+      ref={ref}
+      className={className}
+      style={{
+        opacity: isVisible ? 1 : 0,
+        transform: isVisible ? to : from,
+        transition: `opacity 0.7s ease-out ${delay}s, transform 0.7s ease-out ${delay}s`,
+      }}
+    >
+      {children}
+    </div>
+  );
+}
+
+export { Button, Modal, Toggle, ToastContainer, FormField, ColorSwatch, TemplateThumbnail, CustomSelect, SmoothDropdown, AdvancedColorPicker, Reveal };

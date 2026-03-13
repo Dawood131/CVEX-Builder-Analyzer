@@ -1,6 +1,6 @@
 import React from "react";
 import { COLOR_THEMES } from "../../../data/templates";
-import { ColorSwatch } from "../../../shared/ui/UIComponents";
+import { ColorSwatch, Reveal } from "../../../shared/ui/UIComponents";
 import { FaPalette, FaFont, FaArrowsAltV, FaUserCircle, FaMagic } from "react-icons/fa";
 
 function CustomizationSection() {
@@ -16,9 +16,10 @@ function CustomizationSection() {
     return (
         <section className="py-20 lg:py-28 bg-[var(--brand-400)] dark:bg-[var(--surface-100)] border-y border-[var(--surface-100)]">
             <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 grid lg:grid-cols-2 gap-12 items-center">
+
                 {/* Left text */}
-                <div className="reveal">
-                    <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full  bg-[var(--brand-100)] dark:bg-[var(--brand-800)]/10 dark:text-[var(--brand-600)] text-sm font-semibold mb-4">
+                <Reveal direction="left">
+                    <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-[var(--brand-100)] dark:bg-[var(--brand-800)]/10 dark:text-[var(--brand-600)] text-sm font-semibold mb-4">
                         <FaMagic className="w-4 h-4" /> Customization
                     </div>
                     <h2 className="text-3xl sm:text-4xl font-extrabold tracking-tight text-[var(--surface-900)]">Full Design Control</h2>
@@ -38,11 +39,11 @@ function CustomizationSection() {
                             </div>
                         ))}
                     </div>
-                </div>
+                </Reveal>
 
                 {/* Right demo */}
-                <div className="reveal flex justify-center">
-                    <div className="bg-[var(--surface-50)] dark:bg-[var(--surface-50)] rounded-2xl border border-[var(--surface-200)] rounded-2xl shadow-xl p-6 max-w-sm w-full">
+                <Reveal direction="right" className="flex justify-center">
+                    <div className="bg-[var(--surface-50)] dark:bg-[var(--surface-50)] rounded-2xl border border-[var(--surface-200)] shadow-xl p-6 max-w-sm w-full">
                         <div className="text-sm font-semibold mb-4 text-[var(--surface-900)]">Try Color Themes</div>
                         <div className="flex flex-wrap gap-3 mb-6">
                             {COLOR_THEMES.slice(0, 8).map(t => (
@@ -85,9 +86,11 @@ function CustomizationSection() {
                             </div>
                         </div>
                     </div>
-                </div>
+                </Reveal>
+
             </div>
         </section>
     );
 }
+
 export default CustomizationSection;

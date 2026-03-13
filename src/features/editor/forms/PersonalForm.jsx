@@ -67,7 +67,7 @@ function PersonalForm() {
 
   return (
     /* Scrollable container */
-    <div className="space-y-6 overflow-y-auto max-h-[calc(100vh-180px)] pr-1 pb-4">
+   <div className="space-y-6 overflow-y-auto max-h-[calc(100vh-180px)] pr-1 pb-4 scrollbar-hide">
 
       {/* ── PHOTO ── */}
       <Section
