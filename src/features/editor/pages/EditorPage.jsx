@@ -170,6 +170,8 @@ function EditorPage() {
     const previewWrapperRef = useRef(null);
     const previewContentRef = useRef(null);
     const dragRef = useRef(null);
+    const dragStartY = useRef(null);
+    const dragCurrentY = useRef(null);
     const debouncedCvData = useDebounce(cvData, 0);
 
     useEffect(() => {
@@ -421,7 +423,7 @@ function EditorPage() {
             {/* === FULL PREVIEW MODE === */}
             {fullPreview ? (
                 <div className="flex flex-col h-full bg-[var(--surface-100)]">
-                    <div className="flex items-center justify-around h-14 px-4 border-b border-[var(--surface-200)] bg-[var(--surface-50)]">
+                    <div className="flex items-center md:justify-around justify-between h-14 px-4 border-b border-[var(--surface-200)] bg-[var(--surface-50)]">
                         <h2 className="font-semibold text-base text-[var(--surface-900)]">Full Preview</h2>
                         <div className="flex items-center gap-2">
                             <div className="hidden sm:block">
@@ -470,7 +472,7 @@ function EditorPage() {
                             ))}
                         </div>
 
-                        <div className="flex-1 overflow-y-auto p-4 space-y-3">
+                        <div className="flex-1 overflow-y-auto p-4 space-y-3 pb-20 md:pb-4">
                             {sidebarTab === "sections" ? (
                                 <>
                                     {sectionCards.map(({ sec, meta }, idx) => (
@@ -568,15 +570,28 @@ function EditorPage() {
                 />
             )}
 
-            <div className={cn(
-                "fixed z-[70] flex flex-col md:min-h-screen transition-all duration-300 ease-[cubic-bezier(0.32,0.72,0,1)]",
-                "bg-[var(--surface-50)] border-[var(--surface-200)]",
-                "sm:inset-y-0 sm:right-0 sm:w-[380px] sm:border-l sm:rounded-none sm:shadow-2xl",
-                "bottom-0 left-0 right-0 max-h-[88vh] rounded-t-3xl border-t sm:bottom-auto sm:left-auto sm:top-0",
-                historyOpen
-                    ? "translate-y-0 sm:translate-x-0"
-                    : "translate-y-full sm:translate-y-0 sm:translate-x-full"
-            )}>
+            <div
+                className={cn(
+                    "fixed z-[70] flex flex-col md:min-h-screen transition-all duration-300 ease-[cubic-bezier(0.32,0.72,0,1)]",
+                    "bg-[var(--surface-50)] border-[var(--surface-200)]",
+                    "sm:inset-y-0 sm:right-0 sm:w-[380px] sm:border-l sm:rounded-none sm:shadow-2xl",
+                    "bottom-0 left-0 right-0 max-h-[88vh] rounded-t-3xl border-t sm:bottom-auto sm:left-auto sm:top-0",
+                    historyOpen
+                        ? "translate-y-0 sm:translate-x-0"
+                        : "translate-y-full sm:translate-y-0 sm:translate-x-full"
+                )}
+                onTouchStart={(e) => dragStartY.current = e.touches[0].clientY}
+                onTouchMove={(e) => dragCurrentY.current = e.touches[0].clientY}
+                onTouchEnd={() => {
+                    if (dragStartY.current !== null && dragCurrentY.current !== null) {
+                        const diff = dragCurrentY.current - dragStartY.current;
+                        // If dragged downward by 50px or more, close
+                        if (diff > 50) setHistoryOpen(false);
+                    }
+                    dragStartY.current = null;
+                    dragCurrentY.current = null;
+                }}
+            >
                 <div className="sm:hidden flex justify-center pt-3 pb-1 shrink-0">
                     <div className="w-10 h-1 rounded-full bg-[var(--surface-300)]" />
                 </div>
