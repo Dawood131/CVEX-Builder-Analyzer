@@ -34,7 +34,6 @@ import {
     FaSpinner,
     FaClockRotateLeft,
     FaTrash,
-    FaFolderOpen,
     FaXmark,
 } from "react-icons/fa6";
 import { FaGripLines } from "react-icons/fa";
@@ -136,6 +135,83 @@ const SectionCard = memo(function SectionCard({
     );
 });
 
+// ─────────────────────────────────────────────
+// Swipe-to-close hook — attaches to drag handle only
+// Drawer must always be in the DOM (never conditionally rendered)
+// ─────────────────────────────────────────────
+function useSwipeToClose({ onClose, isOpen, threshold = 80 }) {
+    const drawerRef = useRef(null);
+    const handleRef = useRef(null);
+    const startY = useRef(null);
+    const currentY = useRef(null);
+    const isDragging = useRef(false);
+    const animFrameId = useRef(null);
+
+    // keep latest onClose in a ref so listeners don't go stale
+    const onCloseRef = useRef(onClose);
+    useEffect(() => { onCloseRef.current = onClose; }, [onClose]);
+
+    useEffect(() => {
+        const handle = handleRef.current;
+        const drawer = drawerRef.current;
+        if (!handle || !drawer) return;
+
+        const onTouchStart = (e) => {
+            if (!isOpen) return;
+            startY.current = e.touches[0].clientY;
+            currentY.current = e.touches[0].clientY;
+            isDragging.current = true;
+            // pause CSS transition while user is dragging
+            drawer.style.transition = "none";
+        };
+
+        const onTouchMove = (e) => {
+            if (!isDragging.current) return;
+            currentY.current = e.touches[0].clientY;
+            const diff = Math.max(0, currentY.current - startY.current);
+            if (diff > 0) {
+                e.preventDefault();
+                if (animFrameId.current) cancelAnimationFrame(animFrameId.current);
+                animFrameId.current = requestAnimationFrame(() => {
+                    if (drawer) drawer.style.transform = `translateY(${diff}px)`;
+                });
+            }
+        };
+
+        const onTouchEnd = () => {
+            if (!isDragging.current) return;
+            isDragging.current = false;
+            const diff = Math.max(0, (currentY.current ?? 0) - (startY.current ?? 0));
+
+            // restore transition before deciding
+            drawer.style.transition = "";
+            drawer.style.transform = "";
+
+            if (diff > threshold) {
+                onCloseRef.current();
+            }
+
+            startY.current = null;
+            currentY.current = null;
+        };
+
+        handle.addEventListener("touchstart", onTouchStart, { passive: true });
+        handle.addEventListener("touchmove", onTouchMove, { passive: false });
+        handle.addEventListener("touchend", onTouchEnd, { passive: true });
+
+        return () => {
+            handle.removeEventListener("touchstart", onTouchStart);
+            handle.removeEventListener("touchmove", onTouchMove);
+            handle.removeEventListener("touchend", onTouchEnd);
+            if (animFrameId.current) cancelAnimationFrame(animFrameId.current);
+            if (drawer) { drawer.style.transform = ""; drawer.style.transition = ""; }
+        };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [threshold]); // intentionally stable — isOpen read inside handler
+
+    return { drawerRef, handleRef };
+}
+
 // EditorPage
 function EditorPage() {
     const navigate = useNavigate();
@@ -170,17 +246,22 @@ function EditorPage() {
     const previewWrapperRef = useRef(null);
     const previewContentRef = useRef(null);
     const dragRef = useRef(null);
-    const dragStartY = useRef(null);
-    const dragCurrentY = useRef(null);
     const debouncedCvData = useDebounce(cvData, 0);
+
+    // ── Swipe-to-close for history drawer ──
+    const closeHistory = useCallback(() => setHistoryOpen(false), []);
+    const { drawerRef: historyDrawerRef, handleRef: historyHandleRef } = useSwipeToClose({
+        onClose: closeHistory,
+        isOpen: historyOpen,
+        threshold: 80,
+    });
 
     useEffect(() => {
         const t = setTimeout(() => {
             try {
                 localStorage.setItem("cvex_autosave", JSON.stringify(cvData));
                 localStorage.setItem("cvex_autosave_ts", Date.now().toString());
-            } catch {
-            }
+            } catch { }
         }, 1000);
         return () => clearTimeout(t);
     }, [cvData]);
@@ -198,8 +279,6 @@ function EditorPage() {
         saveVersion(autoName, { manual: true });
         showToast("CV saved successfully!", "success");
     }, [generateCVName, dispatch, saveVersion, showToast]);
-
-
 
     const handleExport = useCallback(async () => {
         if (isExporting) return;
@@ -562,38 +641,43 @@ function EditorPage() {
                 </div>
             )}
 
-            {/* HISTORY DRAWER */}
+            {/* HISTORY DRAWER BACKDROP */}
             {historyOpen && (
                 <div
-                    className="fixed inset-0 z-[60] bg-black/50"
+                    className="fixed inset-0 z-[60] bg-black/50 animate-fadeIn"
                     onClick={() => setHistoryOpen(false)}
                 />
             )}
 
+            {/* HISTORY DRAWER */}
             <div
+                ref={historyDrawerRef}
                 className={cn(
-                    "fixed z-[70] flex flex-col md:min-h-screen transition-all duration-300 ease-[cubic-bezier(0.32,0.72,0,1)]",
+                    "fixed z-[70] flex flex-col md:min-h-screen",
                     "bg-[var(--surface-50)] border-[var(--surface-200)]",
+                    // desktop: right slide-in panel
                     "sm:inset-y-0 sm:right-0 sm:w-[380px] sm:border-l sm:rounded-none sm:shadow-2xl",
+                    // mobile: bottom sheet
                     "bottom-0 left-0 right-0 max-h-[88vh] rounded-t-3xl border-t sm:bottom-auto sm:left-auto sm:top-0",
+                    // transition
+                    "transition-transform duration-300 ease-[cubic-bezier(0.32,0.72,0,1)]",
                     historyOpen
                         ? "translate-y-0 sm:translate-x-0"
                         : "translate-y-full sm:translate-y-0 sm:translate-x-full"
                 )}
-                onTouchStart={(e) => dragStartY.current = e.touches[0].clientY}
-                onTouchMove={(e) => dragCurrentY.current = e.touches[0].clientY}
-                onTouchEnd={() => {
-                    if (dragStartY.current !== null && dragCurrentY.current !== null) {
-                        const diff = dragCurrentY.current - dragStartY.current;
-                        // If dragged downward by 50px or more, close
-                        if (diff > 50) setHistoryOpen(false);
-                    }
-                    dragStartY.current = null;
-                    dragCurrentY.current = null;
-                }}
             >
-                <div className="sm:hidden flex justify-center pt-3 pb-1 shrink-0">
-                    <div className="w-10 h-1 rounded-full bg-[var(--surface-300)]" />
+                {/* 
+                  ── Drag handle (mobile only) ──
+                  Touch events are attached here via useSwipeToClose hook.
+                  This is the ONLY zone that initiates a swipe-to-close.
+                  Adding touch-none on the rest of the drawer prevents accidental dismiss.
+                */}
+                <div
+                    ref={historyHandleRef}
+                    className="sm:hidden flex justify-center pt-3 pb-2 shrink-0 cursor-grab active:cursor-grabbing touch-none select-none"
+                    aria-label="Drag to close"
+                >
+                    <div className="w-10 h-1.5 rounded-full bg-[var(--surface-300)] pointer-events-none" />
                 </div>
 
                 {/* Header */}
@@ -623,7 +707,6 @@ function EditorPage() {
                             </button>
                         )}
 
-                        {/* Close Button */}
                         <button
                             onClick={() => setHistoryOpen(false)}
                             className="w-8 h-8 flex items-center justify-center rounded-lg text-[var(--surface-500)] hover:text-[var(--surface-900)] hover:bg-[var(--surface-200)] transition-colors cursor-pointer"
@@ -721,7 +804,6 @@ function EditorPage() {
                                             )}
                                         </div>
 
-                                        {/* Meta */}
                                         <div className="flex items-center gap-2 mb-3">
                                             <span className="text-[11px] text-[var(--surface-500)]" title={fullTime}>
                                                 {relativeTime} · {fullTime.split(",").slice(0, 2).join(",")}
@@ -737,7 +819,6 @@ function EditorPage() {
                                             </span>
                                         </div>
 
-                                        {/* Actions: Restore + Download PDF + Delete */}
                                         <div className="flex gap-2">
                                             <button
                                                 onClick={() => {
@@ -790,7 +871,7 @@ function EditorPage() {
                 </div>
             </div>
 
-            {/* DELETE CONFIRM MODAL*/}
+            {/* DELETE CONFIRM MODAL */}
             {(deleteConfirm || clearAllConfirm) && (
                 <div className="fixed inset-0 z-[100] flex items-end sm:items-center justify-center p-0 sm:p-4">
                     <div
@@ -801,10 +882,8 @@ function EditorPage() {
                         }}
                     />
 
-                    {/* Modal */}
                     <div className="relative z-10 w-full sm:max-w-[400px] bg-[var(--surface-50)] sm:rounded-2xl rounded-t-3xl shadow-2xl border border-[var(--surface-200)] overflow-hidden animate-scaleIn">
 
-                        {/* Mobile handle */}
                         <div className="sm:hidden flex justify-center pt-3 pb-1">
                             <div className="w-10 h-1 rounded-full bg-[var(--surface-300)]" />
                         </div>
@@ -827,7 +906,6 @@ function EditorPage() {
                                 </div>
                             </div>
 
-                            {/* CV Name (only for single delete) */}
                             {deleteConfirm && (
                                 <div className="flex items-center gap-2.5 px-3.5 py-2.5 rounded-xl bg-[var(--surface-100)] border border-[var(--surface-200)] mb-5">
                                     <div className="w-1.5 h-1.5 rounded-full bg-red-400 shrink-0" />
@@ -837,17 +915,8 @@ function EditorPage() {
                                 </div>
                             )}
 
-                            {/* Warning */}
                             <p className="text-[12px] text-[var(--surface-400)] mb-5 flex items-center gap-1.5">
-                                <svg
-                                    width="12"
-                                    height="12"
-                                    viewBox="0 0 24 24"
-                                    fill="none"
-                                    stroke="currentColor"
-                                    strokeWidth="2.5"
-                                    className="shrink-0 text-amber-400"
-                                >
+                                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" className="shrink-0 text-amber-400">
                                     <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z" />
                                     <line x1="12" y1="9" x2="12" y2="13" />
                                     <line x1="12" y1="17" x2="12.01" y2="17" />
@@ -855,13 +924,9 @@ function EditorPage() {
                                 This action cannot be undone
                             </p>
 
-                            {/* Buttons */}
                             <div className="flex gap-3">
                                 <button
-                                    onClick={() => {
-                                        setDeleteConfirm(null);
-                                        setClearAllConfirm(false);
-                                    }}
+                                    onClick={() => { setDeleteConfirm(null); setClearAllConfirm(false); }}
                                     className="flex-1 py-2.5 rounded-xl border border-[var(--surface-300)] text-sm font-semibold text-[var(--surface-700)] hover:bg-[var(--surface-100)] active:scale-[0.97] transition cursor-pointer"
                                 >
                                     Cancel
@@ -885,7 +950,6 @@ function EditorPage() {
                                     {deleteConfirm ? "Delete" : "Clear All"}
                                 </button>
                             </div>
-
                         </div>
                     </div>
                 </div>
