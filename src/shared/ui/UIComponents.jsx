@@ -330,22 +330,28 @@ function TemplateThumbnail({ template, primaryColor }) {
   );
 }
 
-import { Listbox, Transition } from "@headlessui/react";
+
 import { Fragment } from "react";
-import { HiCheck, HiChevronDown } from "react-icons/hi";
+import { Listbox, Transition } from "@headlessui/react";
+import { HiChevronDown, HiCheck } from "react-icons/hi";
 
 function SmoothDropdown({ options, value, onChange, label }) {
   const selectedOption = options.find(o => o.id === value);
 
   return (
-    <div className="w-full">
-      {label && <label className="block text-[0.8125rem] font-semibold text-[var(--surface-900)] mb-1.5">{label}</label>}
+    <div className="w-full relative">
+      {label && (
+        <label className="block text-[0.8125rem] font-semibold text-[var(--surface-900)] mb-1.5">
+          {label}
+        </label>
+      )}
+
       <Listbox value={value} onChange={onChange}>
-        <div className="relative">
-          <Listbox.Button className="relative w-full cursor-pointer rounded-[0.625rem] bg-[var(--surface-100)] border-[1.5px] border-[var(--surface-200)] py-2 pl-3 pr-10 text-left text-sm font-mono text-[var(--surface-900)] focus:outline-none  transition-all duration-200">
+        <div className="relative w-full">
+          <Listbox.Button className="relative w-full cursor-pointer rounded-[0.625rem] bg-[var(--surface-100)] border-[1.5px] border-[var(--surface-200)] py-2 pl-3 pr-10 text-left text-sm font-mono text-[var(--surface-900)] focus:outline-none transition-all duration-200">
             <span className="block truncate">{selectedOption?.name}</span>
             <span className="pointer-events-none absolute inset-y-0 right-0 flex items-center pr-3">
-              <HiChevronDown className="h-4 w-4 text-[var(--surface-400)]" aria-hidden="true" />
+              <HiChevronDown className="h-4 w-4 text-[var(--surface-400)]" />
             </span>
           </Listbox.Button>
 
@@ -355,12 +361,15 @@ function SmoothDropdown({ options, value, onChange, label }) {
             leaveFrom="opacity-100"
             leaveTo="opacity-0"
           >
-            <Listbox.Options className="absolute mt-1 max-h-60 w-full overflow-auto rounded-md bg-[var(--surface-100)] py-1 text-sm shadow-lg ring-1 ring-[var(--surface-300)] ring-opacity-5 focus:outline-none z-50">
-              {options.map((option) => (
+            <Listbox.Options className="absolute z-50 mt-1 w-full max-h-36 overflow-y-auto rounded-md bg-[var(--surface-100)] py-1 text-sm shadow-lg ring-1 ring-[var(--surface-300)] ring-opacity-5 focus:outline-none">
+              {options.map(option => (
                 <Listbox.Option
                   key={option.id}
                   className={({ active }) =>
-                    `cursor-pointer select-none relative py-2 pl-3 pr-9  ${active ? "bg-[var(--brand-100)] text-[var(--brand-700)]" : "text-[var(--surface-900)]"
+                    `cursor-pointer select-none relative py-2 pl-3 pr-9 ${
+                      active
+                        ? "bg-[var(--brand-100)] text-[var(--brand-700)]"
+                        : "text-[var(--surface-900)]"
                     }`
                   }
                   value={option.id}
@@ -370,11 +379,15 @@ function SmoothDropdown({ options, value, onChange, label }) {
                       <span className={`block truncate ${selected ? "font-semibold" : "font-normal"}`}>
                         {option.name}
                       </span>
-                      {selected ? (
-                        <span className={`absolute inset-y-0 right-0 flex items-center pr-4 ${active ? "text-[var(--brand-700)]" : "text-[var(--surface-400)]"}`}>
+                      {selected && (
+                        <span
+                          className={`absolute inset-y-0 right-0 flex items-center pr-4 ${
+                            active ? "text-[var(--brand-700)]" : "text-[var(--surface-400)]"
+                          }`}
+                        >
                           <HiCheck className="h-4 w-4" />
                         </span>
-                      ) : null}
+                      )}
                     </>
                   )}
                 </Listbox.Option>

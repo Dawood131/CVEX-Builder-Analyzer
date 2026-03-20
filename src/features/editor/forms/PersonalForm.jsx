@@ -88,7 +88,7 @@ function PersonalForm() {
             dragOver
               ? "border-[var(--brand-400)] bg-[var(--brand-50,#eff6ff)]"
               : p.photo
-              ? "border-[var(--surface-300)] bg-[var(--surface-50)] "
+              ? "border-[var(--surface-300)] bg-[var(--surface-50)]"
               : "border-dashed border-[var(--surface-400)] hover:border-[var(--brand-300)] hover:bg-[var(--surface-50)] cursor-pointer",
           ].join(" ")}
         >

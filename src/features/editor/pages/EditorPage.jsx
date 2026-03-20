@@ -4,7 +4,7 @@ import React, {
     lazy, Suspense,
 } from "react";
 import { useCV } from "../../../context/CVContext";
-import { exportCVToPDF } from "../../../utils/exportPdf";
+import { exportCVToPDF } from "../exportPdf";
 import { renderCVHTML, CVPreview } from "../preview/CVRenderer";
 import { Button, Toggle } from "../../../shared/ui/UIComponents";
 import { cn } from "../../../utils/helper";
@@ -38,10 +38,20 @@ import {
 } from "react-icons/fa6";
 import { FaGripLines } from "react-icons/fa";
 
-// DEBOUNCE HOOK
-function useDebounce(value, delay = 400) {
+/* ─────────────────────────────────────────────────────────────────────────────
+   DEBOUNCE HOOK
+   Used to defer heavy preview re-renders while the user types.
+   0 ms delay = no visible lag for single keystrokes; larger values (e.g. 120ms)
+   can smooth out very fast bursts if needed.
+─────────────────────────────────────────────────────────────────────────── */
+function useDebounce(value, delay = 0) {
     const [debounced, setDebounced] = useState(value);
     useEffect(() => {
+        if (delay === 0) {
+            // Zero-delay: schedule via rAF so React batches first
+            const id = requestAnimationFrame(() => setDebounced(value));
+            return () => cancelAnimationFrame(id);
+        }
         const t = setTimeout(() => setDebounced(value), delay);
         return () => clearTimeout(t);
     }, [value, delay]);
@@ -66,11 +76,19 @@ export async function compressImage(file, maxPx = 800, quality = 0.75) {
     });
 }
 
-// DebouncedPreview
+/* ─────────────────────────────────────────────────────────────────────────────
+   DebouncedPreview
+   Wrapped in memo so it only re-renders when snapshot actually changes.
+   The snapshot identity is controlled by the debounced value in EditorPage.
+─────────────────────────────────────────────────────────────────────────── */
 const DebouncedPreview = memo(function DebouncedPreview({ snapshot }) {
     return <CVPreview snapshot={snapshot} />;
 });
 
+/* ─────────────────────────────────────────────────────────────────────────────
+   SectionCard
+   Memoized to avoid cascading re-renders when other sections change.
+─────────────────────────────────────────────────────────────────────────── */
 const SectionCard = memo(function SectionCard({
     sec, idx, meta, isEnabled, isActive,
     onToggle, onSetActive,
@@ -78,7 +96,6 @@ const SectionCard = memo(function SectionCard({
 }) {
     return (
         <div
-            key={sec}
             className={cn(
                 "border-[1px] border-[var(--surface-300)] rounded-xl overflow-hidden transition-all",
                 isActive
@@ -135,10 +152,9 @@ const SectionCard = memo(function SectionCard({
     );
 });
 
-// ─────────────────────────────────────────────
-// Swipe-to-close hook — attaches to drag handle only
-// Drawer must always be in the DOM (never conditionally rendered)
-// ─────────────────────────────────────────────
+/* ─────────────────────────────────────────────────────────────────────────────
+   Swipe-to-close hook — attaches touch listeners only to drag handle
+─────────────────────────────────────────────────────────────────────────── */
 function useSwipeToClose({ onClose, isOpen, threshold = 80 }) {
     const drawerRef = useRef(null);
     const handleRef = useRef(null);
@@ -146,8 +162,6 @@ function useSwipeToClose({ onClose, isOpen, threshold = 80 }) {
     const currentY = useRef(null);
     const isDragging = useRef(false);
     const animFrameId = useRef(null);
-
-    // keep latest onClose in a ref so listeners don't go stale
     const onCloseRef = useRef(onClose);
     useEffect(() => { onCloseRef.current = onClose; }, [onClose]);
 
@@ -161,7 +175,6 @@ function useSwipeToClose({ onClose, isOpen, threshold = 80 }) {
             startY.current = e.touches[0].clientY;
             currentY.current = e.touches[0].clientY;
             isDragging.current = true;
-            // pause CSS transition while user is dragging
             drawer.style.transition = "none";
         };
 
@@ -182,15 +195,9 @@ function useSwipeToClose({ onClose, isOpen, threshold = 80 }) {
             if (!isDragging.current) return;
             isDragging.current = false;
             const diff = Math.max(0, (currentY.current ?? 0) - (startY.current ?? 0));
-
-            // restore transition before deciding
             drawer.style.transition = "";
             drawer.style.transform = "";
-
-            if (diff > threshold) {
-                onCloseRef.current();
-            }
-
+            if (diff > threshold) onCloseRef.current();
             startY.current = null;
             currentY.current = null;
         };
@@ -207,12 +214,14 @@ function useSwipeToClose({ onClose, isOpen, threshold = 80 }) {
             if (drawer) { drawer.style.transform = ""; drawer.style.transition = ""; }
         };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [threshold]); // intentionally stable — isOpen read inside handler
+    }, [threshold]);
 
     return { drawerRef, handleRef };
 }
 
-// EditorPage
+/* ─────────────────────────────────────────────────────────────────────────────
+   EditorPage
+─────────────────────────────────────────────────────────────────────────── */
 function EditorPage() {
     const navigate = useNavigate();
     const {
@@ -246,9 +255,12 @@ function EditorPage() {
     const previewWrapperRef = useRef(null);
     const previewContentRef = useRef(null);
     const dragRef = useRef(null);
+
+    /* ── DEBOUNCE: 0ms delay uses rAF batching; increase to ~120ms if
+       typing feels sluggish on low-end devices ── */
     const debouncedCvData = useDebounce(cvData, 0);
 
-    // ── Swipe-to-close for history drawer ──
+    // Swipe-to-close for history drawer
     const closeHistory = useCallback(() => setHistoryOpen(false), []);
     const { drawerRef: historyDrawerRef, handleRef: historyHandleRef } = useSwipeToClose({
         onClose: closeHistory,
@@ -256,6 +268,7 @@ function EditorPage() {
         threshold: 80,
     });
 
+    // Autosave
     useEffect(() => {
         const t = setTimeout(() => {
             try {
@@ -309,6 +322,7 @@ function EditorPage() {
         }
     }, [isExporting, generateCVName, dispatch, cvData, showToast, saveVersion]);
 
+    // Preview scale auto-fit
     useEffect(() => {
         const updateScale = () => {
             if (!previewContentRef.current || !previewWrapperRef.current) return;
@@ -335,6 +349,7 @@ function EditorPage() {
         setPreviewScale(window.innerWidth < 768 ? 0.45 : 1);
     }, []);
 
+    // Drag-and-drop section reorder
     const onDragStart = useCallback((idx, e) => {
         dragRef.current = idx;
         e.dataTransfer.effectAllowed = "move";
@@ -364,6 +379,7 @@ function EditorPage() {
         dispatch({ type: "UPDATE_ENABLED", payload: { [sec]: v } });
     }, [dispatch]);
 
+    // Keyboard shortcuts
     useEffect(() => {
         const handler = (e) => {
             if ((e.ctrlKey || e.metaKey) && e.key === "z") {
@@ -479,7 +495,6 @@ function EditorPage() {
                         <Button
                             variant="ghost"
                             size="sm"
-                            className="analyzer-btn-glow"
                             onClick={() => {
                                 window.__cvexAutoAnalyze = true;
                                 navigate("/analyzer");
@@ -499,7 +514,7 @@ function EditorPage() {
                 </div>
             )}
 
-            {/* === FULL PREVIEW MODE === */}
+            {/* FULL PREVIEW MODE */}
             {fullPreview ? (
                 <div className="flex flex-col h-full bg-[var(--surface-100)]">
                     <div className="flex items-center md:justify-around justify-between h-14 px-4 border-b border-[var(--surface-200)] bg-[var(--surface-50)]">
@@ -521,7 +536,11 @@ function EditorPage() {
                         className="flex-1 overflow-auto flex flex-col items-center py-6 px-2 sm:px-4 gap-6"
                         style={{ minHeight: 'calc(100vh - 56px)' }}
                     >
-                        <div ref={previewContentRef} className="bg-white shadow-xl rounded-md overflow-visible border border-[var(--surface-200)]" style={previewStyle}>
+                        <div
+                            ref={previewContentRef}
+                            className="bg-white shadow-xl rounded-md overflow-visible border border-[var(--surface-200)]"
+                            style={previewStyle}
+                        >
                             <DebouncedPreview snapshot={debouncedCvData} />
                         </div>
                     </div>
@@ -620,7 +639,15 @@ function EditorPage() {
                     </div>
 
                     {/* Preview Area */}
-                    <div ref={previewWrapperRef} className="flex-1 overflow-x-hidden overflow-y-auto flex flex-col items-center py-6 px-2 sm:px-4 bg-[var(--surface-100)]">
+                    <div
+                        ref={previewWrapperRef}
+                        className={cn(
+                            "flex-1 overflow-x-hidden overflow-y-auto flex flex-col items-center py-6 px-2 sm:px-4 bg-[var(--surface-100)]",
+                            // On mobile, hide preview pane unless explicitly selected
+                            mobileView === "preview" ? "flex" : "hidden lg:flex"
+                        )}
+                    >
+                        {/* Scale controls */}
                         <div className="flex items-center gap-3 mb-6 p-2 bg-[var(--surface-50)] rounded-md shadow-sm z-10 border border-[var(--surface-200)]">
                             <Button variant="ghost" size="sm" onClick={() => adjustScale(-0.05)}><FaMinus /></Button>
                             <span className="text-sm font-medium text-[var(--surface-900)] w-12 text-center">
@@ -629,6 +656,8 @@ function EditorPage() {
                             <Button variant="ghost" size="sm" onClick={() => adjustScale(0.05)}><FaPlus /></Button>
                             <Button variant="ghost" size="sm" onClick={fitScale}>Fit</Button>
                         </div>
+
+                        {/* CV Preview wrapper — fixed width 794px, scaled via transform */}
                         <div
                             ref={previewContentRef}
                             className="bg-white shadow-xl rounded-md overflow-visible border border-[var(--surface-200)]"
@@ -655,23 +684,14 @@ function EditorPage() {
                 className={cn(
                     "fixed z-[70] flex flex-col md:min-h-screen",
                     "bg-[var(--surface-50)] border-[var(--surface-200)]",
-                    // desktop: right slide-in panel
                     "sm:inset-y-0 sm:right-0 sm:w-[380px] sm:border-l sm:rounded-none sm:shadow-2xl",
-                    // mobile: bottom sheet
                     "bottom-0 left-0 right-0 max-h-[88vh] rounded-t-3xl border-t sm:bottom-auto sm:left-auto sm:top-0",
-                    // transition
                     "transition-transform duration-300 ease-[cubic-bezier(0.32,0.72,0,1)]",
                     historyOpen
                         ? "translate-y-0 sm:translate-x-0"
                         : "translate-y-full sm:translate-y-0 sm:translate-x-full"
                 )}
             >
-                {/* 
-                  ── Drag handle (mobile only) ──
-                  Touch events are attached here via useSwipeToClose hook.
-                  This is the ONLY zone that initiates a swipe-to-close.
-                  Adding touch-none on the rest of the drawer prevents accidental dismiss.
-                */}
                 <div
                     ref={historyHandleRef}
                     className="sm:hidden flex justify-center pt-3 pb-2 shrink-0 cursor-grab active:cursor-grabbing touch-none select-none"
@@ -706,7 +726,6 @@ function EditorPage() {
                                 Clear All
                             </button>
                         )}
-
                         <button
                             onClick={() => setHistoryOpen(false)}
                             className="w-8 h-8 flex items-center justify-center rounded-lg text-[var(--surface-500)] hover:text-[var(--surface-900)] hover:bg-[var(--surface-200)] transition-colors cursor-pointer"
@@ -727,7 +746,6 @@ function EditorPage() {
                     </button>
                 </div>
 
-                {/* Divider */}
                 {manualSaves.length > 0 && (
                     <div className="flex items-center gap-3 px-4 pb-2 shrink-0">
                         <div className="flex-1 h-px bg-[var(--surface-200)]" />
@@ -736,7 +754,7 @@ function EditorPage() {
                     </div>
                 )}
 
-                {/* List */}
+                {/* Version list */}
                 <div className="flex-1 overflow-y-auto px-4 pb-6 space-y-2 min-h-0">
                     {manualSaves.length === 0 ? (
                         <div className="flex flex-col items-center justify-center h-full gap-4 py-16">
@@ -835,7 +853,7 @@ function EditorPage() {
                                                 onClick={async () => {
                                                     setDownloadingId(cv.id);
                                                     try {
-                                                        const { exportCVToPDF } = await import("../../../utils/exportPdf");
+                                                        const { exportCVToPDF } = await import("../exportPdf");
                                                         const { renderCVHTML } = await import("../preview/CVRenderer");
                                                         const html = renderCVHTML(cv.data, cv.name);
                                                         const ok = await exportCVToPDF(null, cv.name, html);
@@ -871,19 +889,15 @@ function EditorPage() {
                 </div>
             </div>
 
-            {/* DELETE CONFIRM MODAL */}
+            {/* DELETE / CLEAR-ALL CONFIRM MODAL */}
             {(deleteConfirm || clearAllConfirm) && (
                 <div className="fixed inset-0 z-[100] flex items-end sm:items-center justify-center p-0 sm:p-4">
                     <div
                         className="absolute inset-0 bg-black/60 animate-fadeIn"
-                        onClick={() => {
-                            setDeleteConfirm(null);
-                            setClearAllConfirm(false);
-                        }}
+                        onClick={() => { setDeleteConfirm(null); setClearAllConfirm(false); }}
                     />
 
                     <div className="relative z-10 w-full sm:max-w-[400px] bg-[var(--surface-50)] sm:rounded-2xl rounded-t-3xl shadow-2xl border border-[var(--surface-200)] overflow-hidden animate-scaleIn">
-
                         <div className="sm:hidden flex justify-center pt-3 pb-1">
                             <div className="w-10 h-1 rounded-full bg-[var(--surface-300)]" />
                         </div>
@@ -893,7 +907,6 @@ function EditorPage() {
                                 <div className="w-11 h-11 rounded-xl flex items-center justify-center shrink-0 bg-red-50 border border-red-100">
                                     <FaTrash className="text-red-500 text-lg" />
                                 </div>
-
                                 <div className="pt-0.5">
                                     <h3 className="font-bold text-[15px] text-[var(--surface-900)] leading-tight">
                                         {deleteConfirm ? "Delete this version?" : "Clear All Versions?"}
@@ -931,7 +944,6 @@ function EditorPage() {
                                 >
                                     Cancel
                                 </button>
-
                                 <button
                                     onClick={() => {
                                         if (deleteConfirm) {
