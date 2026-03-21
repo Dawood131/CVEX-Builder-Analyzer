@@ -1,4 +1,4 @@
-import React from "react";
+import React, {useState, useEffect} from "react";
 import { TEMPLATES, COLOR_THEMES, FONT_OPTIONS } from "../../../data/templates";
 import { TemplateThumbnail, Button, ColorSwatch, Toggle, SmoothDropdown, AdvancedColorPicker } from "../../../shared/ui/UIComponents";
 import { useCV } from "../../../context/CVContext";
@@ -46,11 +46,35 @@ function FancySlider({ label, value, min, max, step, onChange, hint, pct }) {
     );
 }
 
+// Yeh helper function add karo component ke upar
+function resolveColor(input) {
+    if (!input) return null;
+    // Already valid hex
+    if (/^#[0-9A-Fa-f]{6}$/.test(input)) return input;
+    // Try to resolve named color via canvas
+    try {
+        const ctx = document.createElement("canvas").getContext("2d");
+        ctx.fillStyle = input;
+        const resolved = ctx.fillStyle;
+        // canvas returns hex if valid, "#000000" for invalid too — check
+        if (resolved !== "#000000" || input.toLowerCase() === "black") return resolved;
+        return null;
+    } catch { return null; }
+}
+
+
 // ═══════════════════════════════════════════════════════════════
 function DesignPanel() {
     const navigate = useNavigate();
     const { cvData, dispatch } = useCV();
     const d = cvData.design;
+    // Component ke andar add karo
+const [colorInput, setColorInput] = useState(d.primaryColor);
+
+// d.primaryColor change hone pe sync karo (jab swatch click ho)
+useEffect(() => {
+  setColorInput(d.primaryColor);
+}, [d.primaryColor]);
 
     const applyTheme = (primary, secondary, accent) => {
         dispatch({ type: 'UPDATE_DESIGN', payload: { primaryColor: primary, secondaryColor: secondary, accentColor: accent } });
@@ -87,7 +111,7 @@ function DesignPanel() {
                             {d.template === t.id && (
                                 <div className="absolute top-1.5 right-1.5 w-5 h-5 rounded-full bg-[var(--brand-500)] flex items-center justify-center shadow-sm z-10">
                                     <svg viewBox="0 0 10 10" className="w-2.5 h-2.5">
-                                        <path d="M1.5 5l2.5 2.5 4.5-4.5" stroke="white" strokeWidth="1.8" fill="none" strokeLinecap="round" strokeLinejoin="round"/>
+                                        <path d="M1.5 5l2.5 2.5 4.5-4.5" stroke="white" strokeWidth="1.8" fill="none" strokeLinecap="round" strokeLinejoin="round" />
                                     </svg>
                                 </div>
                             )}
@@ -137,13 +161,13 @@ function DesignPanel() {
                             {/* Diagonal accent */}
                             <div
                                 className="absolute inset-0 pointer-events-none"
-                               
+
                             />
                             {/* Active tick */}
                             {d.primaryColor === t.primary && (
                                 <div className="absolute inset-0 flex items-center justify-center">
                                     <svg viewBox="0 0 10 10" className="w-2.5 h-2.5 drop-shadow">
-                                        <path d="M1.5 5l2.5 2.5 4.5-4.5" stroke="white" strokeWidth="2" fill="none" strokeLinecap="round" strokeLinejoin="round"/>
+                                        <path d="M1.5 5l2.5 2.5 4.5-4.5" stroke="white" strokeWidth="2" fill="none" strokeLinecap="round" strokeLinejoin="round" />
                                     </svg>
                                 </div>
                             )}
@@ -157,14 +181,29 @@ function DesignPanel() {
                         color={d.primaryColor}
                         onChange={(c) => applyTheme(c, c, c)}
                     />
-                    <input
-                        type="text"
-                        value={d.primaryColor}
-                        onChange={e => applyTheme(e.target.value, e.target.value, e.target.value)}
-                        maxLength={7}
-                        className="flex-1 px-2.5 py-1.5 border border-[var(--surface-200)] rounded-lg text-[0.75rem] bg-[var(--surface-50)] font-mono focus:outline-none focus:border-[var(--brand-400)] text-[var(--surface-900)] transition-colors min-w-0"
-                        placeholder="#3b82f6"
-                    />
+                   <input
+  type="text"
+  value={colorInput}
+  onChange={e => {
+    const val = e.target.value;
+    setColorInput(val); // sirf display update karo
+    const resolved = resolveColor(val);
+    if (resolved) applyTheme(resolved, resolved, resolved);
+  }}
+  onBlur={e => {
+    const val = e.target.value.trim();
+    const resolved = resolveColor(val);
+    if (resolved) {
+      applyTheme(resolved, resolved, resolved);
+      setColorInput(resolved); // blur pe hex dikhao
+    } else {
+      setColorInput(d.primaryColor); // invalid — reset
+    }
+  }}
+  maxLength={20}
+  className="flex-1 px-2.5 py-1.5 border border-[var(--surface-200)] rounded-lg text-[0.75rem] bg-[var(--surface-50)] font-mono focus:outline-none focus:border-[var(--brand-400)] text-[var(--surface-900)] transition-colors min-w-0"
+  placeholder="#3b82f6 or red"
+/>
                     {/* Live preview swatch */}
                     <div
                         className="w-7 h-7 rounded-lg flex-shrink-0 shadow-inner border border-black/10"
@@ -248,9 +287,9 @@ function DesignPanel() {
                         <p className="text-[0.7rem] font-medium text-[var(--surface-500)] mb-2">Photo Shape</p>
                         <div className="grid grid-cols-3 gap-2">
                             {[
-                                { id: "circle",  label: "Circle",  borderRadius: "50%" },
+                                { id: "circle", label: "Circle", borderRadius: "50%" },
                                 { id: "rounded", label: "Rounded", borderRadius: "28%" },
-                                { id: "square",  label: "Square",  borderRadius: "6px" },
+                                { id: "square", label: "Square", borderRadius: "6px" },
                             ].map(({ id, label, borderRadius }) => (
                                 <button
                                     key={id}

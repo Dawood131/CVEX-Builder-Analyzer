@@ -11,6 +11,9 @@ import SkillsGapRadar from "../components/SkillsGapRadar";
 import SuggestionsPanel from "../components/SuggestionsPanel";
 import DownloadReport from "../components/DownloadReport";
 import { AnalyzerEngine } from "../analyzerEngine";
+import { useAuth } from "../../../context/AuthContext";
+import { useUserLimits } from "../../auth/hooks/useUserLimits";
+import { useAnalysisDatabase } from "../../auth/hooks/useAnalysisDatabase";
 import {
   FaBrain, FaBolt, FaChartPie, FaSlidersH, FaSpinner,
   FaFilePdf, FaCloudUploadAlt, FaIndustry, FaBullseye,
@@ -18,15 +21,15 @@ import {
   FaMoon, FaSun, FaCheckCircle, FaTimes, FaPen, FaArrowLeft,
   FaExclamationCircle, FaRegFileAlt, FaLaptopCode, FaHeartbeat,
   FaGraduationCap, FaChartLine, FaDollarSign, FaHardHat,
-  FaFlask, FaUsers, FaGlobe, FaStore, FaClipboardList,
-  FaLightbulb, FaPaste, FaTimesCircle,
+  FaFlask, FaUsers, FaStore, FaClipboardList,
+  FaLightbulb, FaTimesCircle, FaDownload,
 } from "react-icons/fa";
 import {
   FaClockRotateLeft, FaTrash, FaXmark, FaArrowRotateLeft,
 } from "react-icons/fa6";
 
 /* ─── PDF.js ─────────────────────────────────────────────────────────────── */
-const PDFJS_CDN = "https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js";
+const PDFJS_CDN    = "https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js";
 const PDFJS_WORKER = "https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js";
 
 async function loadPdfJs() {
@@ -42,22 +45,31 @@ async function loadPdfJs() {
 
 async function extractPdfText(file) {
   const lib = await loadPdfJs();
-  const pdf = await lib.getDocument({ data: await file.arrayBuffer() }).promise;
+  const pdf  = await lib.getDocument({ data: await file.arrayBuffer() }).promise;
   const pages = [];
   for (let i = 1; i <= pdf.numPages; i++) {
-    const page = await pdf.getPage(i);
+    const page    = await pdf.getPage(i);
     const content = await page.getTextContent();
     pages.push(content.items.map(item => item.str).join(" "));
   }
   return pages.join("\n\n");
 }
 
-/* ─── Score colour helper ────────────────────────────────────────────────── */
+/* ─── helpers ────────────────────────────────────────────────────────────── */
+function getMidnightTime() {
+  const midnight = new Date();
+  midnight.setHours(24, 0, 0, 0);
+  const diffMs = midnight - new Date();
+  const hrs  = Math.floor(diffMs / 3600000);
+  const mins = Math.floor((diffMs % 3600000) / 60000);
+  return hrs > 0 ? `${hrs}h ${mins}m` : `${mins}m`;
+}
+
 function scoreColor(s) {
   if (s >= 80) return { text: "text-emerald-500", bg: "bg-emerald-500/10", border: "border-emerald-500/20", hex: "#10b981" };
-  if (s >= 65) return { text: "text-blue-500", bg: "bg-blue-500/10", border: "border-blue-500/20", hex: "#3b82f6" };
-  if (s >= 50) return { text: "text-amber-500", bg: "bg-amber-500/10", border: "border-amber-500/20", hex: "#f59e0b" };
-  return { text: "text-red-500", bg: "bg-red-500/10", border: "border-red-500/20", hex: "#ef4444" };
+  if (s >= 65) return { text: "text-blue-500",    bg: "bg-blue-500/10",    border: "border-blue-500/20",    hex: "#3b82f6" };
+  if (s >= 50) return { text: "text-amber-500",   bg: "bg-amber-500/10",   border: "border-amber-500/20",   hex: "#f59e0b" };
+  return              { text: "text-red-500",     bg: "bg-red-500/10",     border: "border-red-500/20",     hex: "#ef4444" };
 }
 
 function gradeHex(score) {
@@ -67,16 +79,16 @@ function gradeHex(score) {
   return "#ef4444";
 }
 
-/* ─── Circular progress ──────────────────────────────────────────────────── */
+/* ─── Circular score ─────────────────────────────────────────────────────── */
 function CircleScore({ score = 0, size = 80, stroke = 7 }) {
-  const r = (size - stroke * 2) / 2;
+  const r    = (size - stroke * 2) / 2;
   const circ = 2 * Math.PI * r;
-  const pct = Math.min(100, Math.max(0, score));
-  const col = scoreColor(pct);
+  const pct  = Math.min(100, Math.max(0, score));
+  const col  = scoreColor(pct);
   return (
     <svg width={size} height={size} style={{ transform: "rotate(-90deg)" }}>
-      <circle cx={size / 2} cy={size / 2} r={r} fill="none" stroke="var(--surface-200)" strokeWidth={stroke} />
-      <circle cx={size / 2} cy={size / 2} r={r} fill="none" stroke={col.hex} strokeWidth={stroke}
+      <circle cx={size/2} cy={size/2} r={r} fill="none" stroke="var(--surface-200)" strokeWidth={stroke} />
+      <circle cx={size/2} cy={size/2} r={r} fill="none" stroke={col.hex} strokeWidth={stroke}
         strokeDasharray={circ} strokeDashoffset={circ * (1 - pct / 100)} strokeLinecap="round"
         style={{ transition: "stroke-dashoffset 1s ease" }} />
     </svg>
@@ -87,7 +99,7 @@ function MiniBar({ score = 0, label, weight, icon: Icon }) {
   const col = scoreColor(score);
   return (
     <div className="flex items-center gap-3">
-      <div className={cn("w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0", col.bg, col.border, "border")}>
+      <div className={cn("w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0 border", col.bg, col.border)}>
         <Icon className={cn("text-xs", col.text)} />
       </div>
       <div className="flex-1 min-w-0">
@@ -107,27 +119,24 @@ function MiniBar({ score = 0, label, weight, icon: Icon }) {
   );
 }
 
-/* ─── Swipe-to-close hook ────────────────────────────────────────────────── */
+/* ─── Swipe-to-close ─────────────────────────────────────────────────────── */
 function useSwipeToClose({ onClose, isOpen, threshold = 80 }) {
-  const drawerRef = useRef(null);
-  const handleRef = useRef(null);
-  const startY = useRef(null);
-  const currentY = useRef(null);
-  const isDragging = useRef(false);
+  const drawerRef   = useRef(null);
+  const handleRef   = useRef(null);
+  const startY      = useRef(null);
+  const currentY    = useRef(null);
+  const isDragging  = useRef(false);
   const animFrameId = useRef(null);
-  const onCloseRef = useRef(onClose);
+  const onCloseRef  = useRef(onClose);
   useEffect(() => { onCloseRef.current = onClose; }, [onClose]);
 
   useEffect(() => {
-    const handle = handleRef.current;
-    const drawer = drawerRef.current;
+    const handle = handleRef.current, drawer = drawerRef.current;
     if (!handle || !drawer) return;
     const onTouchStart = (e) => {
       if (!isOpen) return;
-      startY.current = e.touches[0].clientY;
-      currentY.current = e.touches[0].clientY;
-      isDragging.current = true;
-      drawer.style.transition = "none";
+      startY.current = currentY.current = e.touches[0].clientY;
+      isDragging.current = true; drawer.style.transition = "none";
     };
     const onTouchMove = (e) => {
       if (!isDragging.current) return;
@@ -136,28 +145,24 @@ function useSwipeToClose({ onClose, isOpen, threshold = 80 }) {
       if (diff > 0) {
         e.preventDefault();
         if (animFrameId.current) cancelAnimationFrame(animFrameId.current);
-        animFrameId.current = requestAnimationFrame(() => {
-          if (drawer) drawer.style.transform = `translateY(${diff}px)`;
-        });
+        animFrameId.current = requestAnimationFrame(() => { if (drawer) drawer.style.transform = `translateY(${diff}px)`; });
       }
     };
     const onTouchEnd = () => {
       if (!isDragging.current) return;
       isDragging.current = false;
       const diff = Math.max(0, (currentY.current ?? 0) - (startY.current ?? 0));
-      drawer.style.transition = "";
-      drawer.style.transform = "";
+      drawer.style.transition = ""; drawer.style.transform = "";
       if (diff > threshold) onCloseRef.current();
-      startY.current = null;
-      currentY.current = null;
+      startY.current = currentY.current = null;
     };
     handle.addEventListener("touchstart", onTouchStart, { passive: true });
-    handle.addEventListener("touchmove", onTouchMove, { passive: false });
-    handle.addEventListener("touchend", onTouchEnd, { passive: true });
+    handle.addEventListener("touchmove",  onTouchMove,  { passive: false });
+    handle.addEventListener("touchend",   onTouchEnd,   { passive: true });
     return () => {
       handle.removeEventListener("touchstart", onTouchStart);
-      handle.removeEventListener("touchmove", onTouchMove);
-      handle.removeEventListener("touchend", onTouchEnd);
+      handle.removeEventListener("touchmove",  onTouchMove);
+      handle.removeEventListener("touchend",   onTouchEnd);
       if (animFrameId.current) cancelAnimationFrame(animFrameId.current);
       if (drawer) { drawer.style.transform = ""; drawer.style.transition = ""; }
     };
@@ -167,21 +172,20 @@ function useSwipeToClose({ onClose, isOpen, threshold = 80 }) {
   return { drawerRef, handleRef };
 }
 
-/* ─── Industry config ────────────────────────────────────────────────────── */
+/* ─── Industry options ───────────────────────────────────────────────────── */
 const INDUSTRY_OPTIONS = [
-  { id: "technology", label: "Technology", icon: FaLaptopCode, color: "text-blue-500", bg: "bg-blue-500/10" },
-  { id: "healthcare", label: "Healthcare", icon: FaHeartbeat, color: "text-rose-500", bg: "bg-rose-500/10" },
-  { id: "finance", label: "Finance", icon: FaDollarSign, color: "text-emerald-500", bg: "bg-emerald-500/10" },
-  { id: "education", label: "Education", icon: FaGraduationCap, color: "text-amber-500", bg: "bg-amber-500/10" },
-  { id: "marketing", label: "Marketing", icon: FaChartLine, color: "text-purple-500", bg: "bg-purple-500/10" },
-  { id: "engineering", label: "Engineering", icon: FaHardHat, color: "text-orange-500", bg: "bg-orange-500/10" },
-  { id: "science", label: "Science", icon: FaFlask, color: "text-cyan-500", bg: "bg-cyan-500/10" },
-  { id: "hr", label: "HR", icon: FaUsers, color: "text-pink-500", bg: "bg-pink-500/10" },
-  { id: "legal", label: "Legal", icon: FaClipboardList, color: "text-slate-500", bg: "bg-slate-500/10" },
-  { id: "retail", label: "Retail", icon: FaStore, color: "text-yellow-500", bg: "bg-yellow-500/10" },
+  { id: "technology",  label: "Technology",  icon: FaLaptopCode,    color: "text-blue-500",    bg: "bg-blue-500/10"    },
+  { id: "healthcare",  label: "Healthcare",  icon: FaHeartbeat,     color: "text-rose-500",    bg: "bg-rose-500/10"    },
+  { id: "finance",     label: "Finance",     icon: FaDollarSign,    color: "text-emerald-500", bg: "bg-emerald-500/10" },
+  { id: "education",   label: "Education",   icon: FaGraduationCap, color: "text-amber-500",   bg: "bg-amber-500/10"   },
+  { id: "marketing",   label: "Marketing",   icon: FaChartLine,     color: "text-purple-500",  bg: "bg-purple-500/10"  },
+  { id: "engineering", label: "Engineering", icon: FaHardHat,       color: "text-orange-500",  bg: "bg-orange-500/10"  },
+  { id: "science",     label: "Science",     icon: FaFlask,         color: "text-cyan-500",    bg: "bg-cyan-500/10"    },
+  { id: "hr",          label: "HR",          icon: FaUsers,         color: "text-pink-500",    bg: "bg-pink-500/10"    },
+  { id: "legal",       label: "Legal",       icon: FaClipboardList, color: "text-slate-500",   bg: "bg-slate-500/10"   },
+  { id: "retail",      label: "Retail",      icon: FaStore,         color: "text-yellow-500",  bg: "bg-yellow-500/10"  },
 ];
 
-/* ─── CV completion calc ─────────────────────────────────────────────────── */
 function calcCompletion(cvData) {
   const checks = [
     !!(cvData.personal?.firstName),
@@ -189,41 +193,100 @@ function calcCompletion(cvData) {
     !!(cvData.personal?.phone),
     !!(cvData.personal?.title),
     (cvData.experience || []).length > 0,
-    (cvData.skills || []).length > 0,
+    (cvData.skills     || []).length > 0,
     !!(cvData.summary?.text),
-    (cvData.education || []).length > 0,
+    (cvData.education  || []).length > 0,
   ];
   return Math.round((checks.filter(Boolean).length / checks.length) * 100);
 }
 
-/* ═══════════════════════════════════════════════════════════════════════════
+/* ══ Limit badge — sidebar ───────────────────────────────────────────────── */
+function ScanLimitCard({ used, total }) {
+  const remaining = Math.max(0, total - used);
+  const isLimit   = remaining === 0;
+  const barColor  = isLimit ? "#ef4444" : used === total - 1 ? "#f59e0b" : "var(--brand-500)";
+
+  return (
+    <div className={cn(
+      "mx-4 mt-4 rounded-xl border overflow-hidden",
+      isLimit ? "border-red-200" : "border-[var(--surface-200)]"
+    )}>
+      <div className={cn("px-3 py-2.5", isLimit ? "bg-red-50" : "bg-[var(--surface-100)]")}>
+        {/* Header */}
+        <div className="flex items-center justify-between mb-2">
+          <div className="flex items-center gap-1.5">
+            <FaBolt className="text-[10px]" style={{ color: barColor }} />
+            <span className={cn("text-[11px] font-bold", isLimit ? "text-red-700" : "text-[var(--surface-800)]")}>
+              Daily Scans
+            </span>
+          </div>
+          <span className={cn("text-[11px] font-semibold", isLimit ? "text-red-600" : "text-[var(--surface-500)]")}>
+            {used}/{total} used
+          </span>
+        </div>
+
+        {/* Pip dots */}
+        <div className="flex items-center gap-1.5 mb-2">
+          {Array.from({ length: total }).map((_, i) => (
+            <div key={i} className={cn(
+              "flex-1 h-6 rounded-lg flex items-center justify-center text-[9px] font-bold border transition-all",
+              i < used
+                ? "bg-[var(--surface-300)] border-[var(--surface-300)] text-[var(--surface-400)]"
+                : isLimit
+                  ? "bg-red-100 border-red-300 text-red-500"
+                  : "bg-[var(--brand-500)]/10 border-[var(--brand-500)]/25 text-[var(--brand-600)]"
+            )}>
+              {i < used ? "✓" : i + 1}
+            </div>
+          ))}
+        </div>
+
+        {/* Progress bar */}
+        <div className="h-1 rounded-full bg-[var(--surface-200)] overflow-hidden mb-1.5">
+          <div className="h-full rounded-full transition-all duration-700"
+            style={{ width: `${(used / total) * 100}%`, background: isLimit ? "#ef4444" : "linear-gradient(90deg, var(--brand-500), #8b5cf6)" }} />
+        </div>
+
+        <p className={cn("text-[10px]", isLimit ? "text-red-600 font-semibold" : "text-[var(--surface-400)]")}>
+          {isLimit
+            ? `⚠ Limit reached — resets in ${getMidnightTime()}`
+            : `${remaining} scan${remaining !== 1 ? "s" : ""} left · resets in 24h`}
+        </p>
+      </div>
+    </div>
+  );
+}
+
+/* ══════════════════════════════════════════════════════════════════════════
    MAIN PAGE
-═══════════════════════════════════════════════════════════════════════════ */
+══════════════════════════════════════════════════════════════════════════ */
 export default function AnalyzerPage() {
   const navigate = useNavigate();
   const { cvData, darkMode, setDarkMode, showToast } = useCV();
+  const { user }  = useAuth();
+  const { canAnalyze: canAnalyzeDB, remainingAnalysis, dailyAnalysisLimit, usage, incrementAnalysis } = useUserLimits();
+  const { saveAnalysis } = useAnalysisDatabase();
+
   const fileInputRef = useRef(null);
 
-  const [analyzing, setAnalyzing] = useState(false);
-  const [jd, setJd] = useState("");
-  const [industry, setIndustry] = useState("technology");
-  const [source, setSource] = useState("builder");
-  const [mobileTab, setMobileTab] = useState("input");
-  const [dragging, setDragging] = useState(false);
-  const [pdfFile, setPdfFile] = useState(null);
-  const [pdfText, setPdfText] = useState("");
-  const [parsing, setParsing] = useState(false);
-  const [pdfError, setPdfError] = useState("");
-  const [historyOpen, setHistoryOpen] = useState(false);
-  const [deleteConfirm, setDeleteConfirm] = useState(null);
-  const [clearAllConfirm, setClearAllConfirm] = useState(false);
+  const [analyzing,      setAnalyzing]      = useState(false);
+  const [jd,             setJd]             = useState("");
+  const [industry,       setIndustry]       = useState("technology");
+  const [source,         setSource]         = useState("builder");
+  const [mobileTab,      setMobileTab]      = useState("input");
+  const [dragging,       setDragging]       = useState(false);
+  const [pdfFile,        setPdfFile]        = useState(null);
+  const [pdfText,        setPdfText]        = useState("");
+  const [parsing,        setParsing]        = useState(false);
+  const [pdfError,       setPdfError]       = useState("");
+  const [historyOpen,    setHistoryOpen]    = useState(false);
+  const [deleteConfirm,  setDeleteConfirm]  = useState(null);
+  const [clearAllConfirm,setClearAllConfirm]= useState(false);
 
   const [history, setHistory] = useState(() => {
     try { return JSON.parse(localStorage.getItem("cvex_analyzerHistory") || "[]"); }
     catch { return []; }
   });
-
-  // Add this after the history state initialization (around line where scanData is)
 
   const [result, setResult] = useState(() => {
     try {
@@ -233,39 +296,17 @@ export default function AnalyzerPage() {
     return null;
   });
 
-  // Add this useEffect to persist result whenever it changes
   useEffect(() => {
     try {
-      if (result) {
-        localStorage.setItem("cvex_currentAnalysis", JSON.stringify(result));
-      } else {
-        localStorage.removeItem("cvex_currentAnalysis");
-      }
+      if (result) localStorage.setItem("cvex_currentAnalysis", JSON.stringify(result));
+      else        localStorage.removeItem("cvex_currentAnalysis");
     } catch { }
   }, [result]);
-
-  const DAILY_LIMIT = 300;
-  const isPro = false;
-
-  const [scanData, setScanData] = useState(() => {
-    try {
-      const stored = JSON.parse(localStorage.getItem("cvex_scanData"));
-      const today = new Date().toDateString();
-      if (stored?.date === today) return stored;
-      return { count: 0, date: today };
-    } catch {
-      return { count: 0, date: new Date().toDateString() };
-    }
-  });
-
-  const remainingScans = DAILY_LIMIT - scanData.count;
 
   useEffect(() => {
     try { localStorage.setItem("cvex_analyzerHistory", JSON.stringify(history.slice(0, 20))); }
     catch { }
   }, [history]);
-
-  useEffect(() => { localStorage.setItem("cvex_scanData", JSON.stringify(scanData)); }, [scanData]);
 
   const closeHistory = useCallback(() => setHistoryOpen(false), []);
   const { drawerRef: historyDrawerRef, handleRef: historyHandleRef } = useSwipeToClose({
@@ -285,7 +326,7 @@ export default function AnalyzerPage() {
 
   const handlePdf = async (file) => {
     if (!file || file.type !== "application/pdf") { setPdfError("Only PDF files are supported."); return; }
-    if (file.size > 10 * 1024 * 1024) { setPdfError("File too large. Max 10MB."); return; }
+    if (file.size > 10 * 1024 * 1024)             { setPdfError("File too large. Max 10MB."); return; }
     setPdfError(""); setParsing(true); setPdfFile(file); setPdfText("");
     try {
       const text = await extractPdfText(file);
@@ -296,23 +337,34 @@ export default function AnalyzerPage() {
       setPdfText(text);
       showToast(`PDF parsed — ${text.split(" ").filter(Boolean).length} words`, "success");
     } catch { setPdfError("Failed to parse PDF."); setPdfFile(null); }
-    finally { setParsing(false); }
+    finally  { setParsing(false); }
   };
 
   const runAnalysis = async () => {
-    if (!isPro && scanData.count >= DAILY_LIMIT) {
-      showToast("Daily limit reached (3 scans/day)", "error"); return;
+    if (!user) { showToast("Please login to analyze.", "error"); return; }
+
+    // DB-based daily limit check
+    if (!canAnalyzeDB) {
+      showToast(`Daily limit reached (${dailyAnalysisLimit}/day). Resets in ${getMidnightTime()}.`, "error");
+      return;
     }
+
     const cv = source === "upload"
       ? (pdfText ? { _pdfText: pdfText, _pdfName: pdfFile?.name } : null) : cvData;
     if (!cv) { showToast(source === "upload" ? "Upload a PDF first." : "No CV data found.", "error"); return; }
+
     try {
       setAnalyzing(true);
       showToast("Analyzing with Gemini AI…", "info");
       const r = await AnalyzerEngine.analyze(cv, { jobDescription: jd, industry });
+
+      // Save to DB
+      await saveAnalysis(r);
+      // Increment daily usage
+      await incrementAnalysis();
+
       setResult(r);
       setHistory(prev => [r, ...prev.slice(0, 19)]);
-      setScanData(prev => ({ ...prev, count: prev.count + 1 }));
       setMobileTab("results");
       showToast(`Done! Score: ${r.overallScore}/100`, "success");
     } catch (e) {
@@ -321,31 +373,17 @@ export default function AnalyzerPage() {
     } finally { setAnalyzing(false); }
   };
 
-  const canAnalyze = analyzing || parsing || (source === "upload" && !pdfText);
+  const canRunAnalyze = analyzing || parsing || (source === "upload" && !pdfText);
 
-  /* ── Derived sidebar values ──────────────────────────────────────────── */
-  const wordCount = jd.trim() ? jd.trim().split(/\s+/).length : 0;
-  const completion = source === "builder" ? calcCompletion(cvData) : null;
-  const completionColor = completion >= 80 ? "#10b981" : completion >= 60 ? "#f59e0b" : "#ef4444";
+  const wordCount        = jd.trim() ? jd.trim().split(/\s+/).length : 0;
+  const completion       = source === "builder" ? calcCompletion(cvData) : null;
+  const completionColor  = completion >= 80 ? "#10b981" : completion >= 60 ? "#f59e0b" : "#ef4444";
 
-  const handlePaste = useCallback(async () => {
-    try { const text = await navigator.clipboard.readText(); setJd(text); }
-    catch { }
-  }, []);
-
-  /* ── Missing fields hint ─────────────────────────────────────────────── */
   const missingFields = [];
-
   if (source === "builder") {
-    // Email & Phone
-    if (!cvData.personal?.email || cvData.personal.email.trim() === "") missingFields.push("Email");
-    if (!cvData.personal?.phone || cvData.personal.phone.trim() === "") missingFields.push("Phone");
-
-    // Summary
-    const summaryText = cvData.personal?.summary;
-    if (!summaryText || summaryText.trim() === "") missingFields.push("Summary");
-
-    // Education
+    if (!cvData.personal?.email?.trim())       missingFields.push("Email");
+    if (!cvData.personal?.phone?.trim())       missingFields.push("Phone");
+    if (!cvData.summary?.text?.trim())         missingFields.push("Summary");
     if ((cvData.education || []).length === 0) missingFields.push("Education");
   }
 
@@ -354,22 +392,47 @@ export default function AnalyzerPage() {
 
       {/* ══ TOPBAR ══════════════════════════════════════════════════════════ */}
       <header className="sticky top-0 z-50 bg-[var(--surface-50)] backdrop-blur-xl border-b border-[var(--surface-400)]/30 flex items-center justify-between h-14 px-3 sm:px-4">
-        <div className="flex items-center gap-3">
-          <Button variant="ghost" size="sm" onClick={() => navigate("/templates")}>
+        <div className="flex items-center gap-2 sm:gap-3">
+          <Button variant="ghost" size="sm" onClick={() => navigate("/")}>
             <FaArrowLeft />
           </Button>
-          <div className="flex items-center gap-2 cursor-pointer" onClick={() => navigate('/')}>
-            <div className="w-10 h-10 rounded-xl flex items-center justify-center overflow-hidden">
+          <div className="flex items-center gap-2 cursor-pointer" onClick={() => navigate("/")}>
+            <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-xl flex items-center justify-center overflow-hidden">
               <img src="/CVEX Logo Design.png" alt="CVEX Logo" className="w-full h-full object-cover rounded-full" />
             </div>
           </div>
           <span className="hidden sm:inline text-gray-300">|</span>
-          <span className="hidden sm:inline font-semibold text-sm text-[var(--surface-900)] truncate max-w-[200px]">
-            AI Analyzer
-          </span>
+          <span className="hidden sm:inline font-semibold text-sm text-[var(--surface-900)]">AI Analyzer</span>
+
+          {/* Desktop limit badge */}
+          {user && (
+            <div className={cn(
+              "hidden sm:flex items-center gap-2 px-2.5 py-1.5 rounded-lg border text-[10px]",
+              !canAnalyzeDB ? "bg-red-50 border-red-200" : "bg-[var(--surface-100)] border-[var(--surface-200)]"
+            )}>
+              <FaBolt className="text-[9px]" style={{ color: !canAnalyzeDB ? "#ef4444" : usage.analyses === dailyAnalysisLimit - 1 ? "#f59e0b" : "#10b981" }} />
+              <span className={cn("font-semibold", !canAnalyzeDB ? "text-red-600" : "text-[var(--surface-600)]")}>Scans</span>
+              <div className="flex items-center gap-[3px]">
+                {Array.from({ length: dailyAnalysisLimit }).map((_, i) => (
+                  <div key={i} className="w-1.5 h-1.5 rounded-full" style={{
+                    background: i < (usage.analyses || 0)
+                      ? "#cbd5e1"
+                      : !canAnalyzeDB ? "#ef4444"
+                      : (usage.analyses || 0) === dailyAnalysisLimit - 1 ? "#f59e0b" : "#10b981"
+                  }} />
+                ))}
+              </div>
+              <span className={cn("font-bold", !canAnalyzeDB ? "text-red-600" : "text-[var(--surface-700)]")}>
+                {usage.analyses || 0}/{dailyAnalysisLimit}
+              </span>
+              <span className={cn("hidden lg:inline", !canAnalyzeDB ? "text-red-400" : "text-[var(--surface-400)]")}>
+                · {!canAnalyzeDB ? `resets in ${getMidnightTime()}` : "resets in 24h"}
+              </span>
+            </div>
+          )}
         </div>
 
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-1.5 sm:gap-2">
           <Button variant="ghost" size="sm" onClick={setDarkMode}>{darkMode ? <FaSun /> : <FaMoon />}</Button>
 
           <Button variant="ghost" size="sm"
@@ -392,17 +455,47 @@ export default function AnalyzerPage() {
 
           <Button variant="primary" size="sm"
             className={cn("flex items-center gap-1",
-              canAnalyze ? "opacity-50 cursor-not-allowed" : "text-white shadow-lg hover:shadow-xl hover:-translate-y-0.5 active:translate-y-0"
+              (canRunAnalyze || !canAnalyzeDB) ? "opacity-50 cursor-not-allowed" : "text-white shadow-lg hover:shadow-xl hover:-translate-y-0.5 active:translate-y-0"
             )}
-            style={!canAnalyze ? {} : { background: "linear-gradient(135deg, var(--brand-500), #8b5cf6)" }}
-            onClick={runAnalysis} disabled={canAnalyze}>
+            style={(canRunAnalyze || !canAnalyzeDB) ? {} : { background: "linear-gradient(135deg, var(--brand-500), #8b5cf6)" }}
+            onClick={runAnalysis} disabled={canRunAnalyze || !canAnalyzeDB}>
             {analyzing ? <FaSpinner className="animate-spin" /> : <FaBrain />}
             <span className="hidden sm:inline">
-              {analyzing ? "Analyzing…" : parsing ? "Parsing…" : source === "upload" && !pdfText ? "Upload PDF First" : "Analyze CV"}
+              {analyzing ? "Analyzing…"
+                : parsing ? "Parsing…"
+                : !canAnalyzeDB ? "Limit Reached"
+                : source === "upload" && !pdfText ? "Upload PDF First"
+                : "Analyze CV"}
             </span>
           </Button>
         </div>
       </header>
+
+      {/* ══ MOBILE LIMIT STRIP ══════════════════════════════════════════════ */}
+      {user && (
+        <div className={cn(
+          "lg:hidden flex items-center justify-between px-4 py-1.5 border-b text-[11px]",
+          !canAnalyzeDB ? "bg-red-50 border-red-200" : "bg-[var(--surface-100)] border-[var(--surface-200)]"
+        )}>
+          <div className="flex items-center gap-2">
+            <FaBolt className="text-[9px]" style={{ color: !canAnalyzeDB ? "#ef4444" : "#f59e0b" }} />
+            <div className="flex items-center gap-[3px]">
+              {Array.from({ length: dailyAnalysisLimit }).map((_, i) => (
+                <div key={i} className="w-2 h-2 rounded-full" style={{
+                  background: i < (usage.analyses || 0) ? "#cbd5e1"
+                    : !canAnalyzeDB ? "#ef4444" : "#10b981"
+                }} />
+              ))}
+            </div>
+            <span className={cn("font-bold", !canAnalyzeDB ? "text-red-700" : "text-[var(--surface-700)]")}>
+              {usage.analyses || 0}/{dailyAnalysisLimit} scans today
+            </span>
+          </div>
+          <span className={cn("font-medium", !canAnalyzeDB ? "text-red-500" : "text-[var(--surface-400)]")}>
+            {!canAnalyzeDB ? `resets in ${getMidnightTime()}` : "resets in 24h"}
+          </span>
+        </div>
+      )}
 
       {/* ══ MOBILE TABS ═════════════════════════════════════════════════════ */}
       <div className="lg:hidden flex border-b border-[var(--surface-200)] bg-[var(--surface-50)]">
@@ -418,61 +511,28 @@ export default function AnalyzerPage() {
       {/* ══ BODY ════════════════════════════════════════════════════════════ */}
       <div className="flex-1 flex overflow-hidden">
 
-        {/* ══ ENHANCED SIDEBAR ════════════════════════════════════════════ */}
+        {/* ══ SIDEBAR ═════════════════════════════════════════════════════ */}
         <aside className={cn(
           "w-full lg:w-[330px] xl:w-[350px] shrink-0 flex flex-col",
           "bg-[var(--surface-50)] border-r border-[var(--surface-200)] overflow-y-auto",
           mobileTab !== "input" && "hidden lg:flex"
         )}>
 
-          {/* ── SCAN QUOTA ────────────────────────────────────────────── */}
-          {!isPro && (
-            <div className="mx-4 mt-4 rounded-xl overflow-hidden bg-[var(--surface-100)]">
-              <div className="flex items-center justify-between px-3 py-2.5">
-                <div className="flex items-center gap-1.5">
-                  <FaBolt className="text-amber-500 text-[10px]" />
-                  <span className="text-[11px] font-bold text-[var(--surface-800)]">Daily Scans</span>
-                </div>
-                <div className="flex items-center gap-1">
-                  {Array.from({ length: DAILY_LIMIT }).map((_, i) => (
-                    <div key={i} className={cn(
-                      "w-6 h-6 rounded-lg flex items-center justify-center text-[9px] font-bold border transition-all",
-                      i < scanData.count
-                        ? "bg-[var(--surface-300)] border-[var(--surface-300)] text-[var(--surface-400)]"
-                        : "bg-[var(--brand-500)]/10 border-[var(--brand-500)]/25 text-[var(--brand-600)]"
-                    )}>
-                      {i < scanData.count ? "✓" : i + 1}
-                    </div>
-                  ))}
-                </div>
-              </div>
-              <div className="h-[3px] bg-[var(--surface-200)]">
-                <div className="h-full transition-all duration-700 ease-out" style={{
-                  width: `${(scanData.count / DAILY_LIMIT) * 100}%`,
-                  background: remainingScans === 0
-                    ? "linear-gradient(90deg,#ef4444,#f87171)"
-                    : "linear-gradient(90deg,var(--brand-500),#8b5cf6)"
-                }} />
-              </div>
-              <p className="px-3 py-1.5 text-[10px] text-[var(--surface-400)]">
-                {remainingScans === 0 ? "⚠ Limit reached · Resets at midnight"
-                  : `${remainingScans} scan${remainingScans > 1 ? "s" : ""} remaining today`}
-              </p>
-            </div>
+          {/* Scan limit card */}
+          {user && (
+            <ScanLimitCard
+              used={usage.analyses || 0}
+              total={dailyAnalysisLimit}
+            />
           )}
 
-          {/* ── SOURCE TOGGLE ─────────────────────────────────────────── */}
+          {/* Source toggle */}
           <div className="p-4 pb-3">
             <p className="text-[10px] font-bold uppercase tracking-widest text-[var(--surface-400)] mb-2.5">CV Source</p>
             <div className="relative flex bg-[var(--surface-200)] rounded-xl p-1">
-              <div
-                className="absolute top-1 bottom-1 rounded-[10px] bg-[var(--surface-50)] shadow-sm border border-[var(--surface-300)] transition-all duration-300 ease-out"
-                style={{ width: "calc(50% - 4px)", left: source === "builder" ? "4px" : "calc(50%)" }}
-              />
-              {[
-                ["builder", FaRegFileAlt, "From Builder"],
-                ["upload", FaFilePdf, "Upload PDF"],
-              ].map(([s, Icon, lbl]) => (
+              <div className="absolute top-1 bottom-1 rounded-[10px] bg-[var(--surface-50)] shadow-sm border border-[var(--surface-300)] transition-all duration-300 ease-out"
+                style={{ width: "calc(50% - 4px)", left: source === "builder" ? "4px" : "calc(50%)" }} />
+              {[["builder", FaRegFileAlt, "From Builder"], ["upload", FaFilePdf, "Upload PDF"]].map(([s, Icon, lbl]) => (
                 <button key={s} onClick={() => setSource(s)}
                   className={cn(
                     "relative z-10 flex-1 flex items-center justify-center gap-1.5 py-2 rounded-[10px] text-xs font-semibold transition-colors duration-200 cursor-pointer",
@@ -487,18 +547,14 @@ export default function AnalyzerPage() {
 
           <div className="h-px bg-[var(--surface-200)] mx-4" />
 
-          {/* ── CV INFO / PDF UPLOAD ───────────────────────────────────── */}
+          {/* CV info / PDF upload */}
           <div className="p-4 pb-3">
             {source === "builder" ? (
               <div className="rounded-xl bg-[var(--surface-100)] border border-[var(--surface-200)] overflow-hidden">
                 <div className="px-3 pt-3 pb-3">
-                  {/* Header row */}
                   <div className="flex items-center gap-2.5 mb-3">
                     <div className="w-9 h-9 rounded-xl flex items-center justify-center shrink-0 border"
-                      style={{
-                        background: `linear-gradient(135deg, ${completionColor}20, ${completionColor}08)`,
-                        borderColor: `${completionColor}30`,
-                      }}>
+                      style={{ background: `linear-gradient(135deg, ${completionColor}20, ${completionColor}08)`, borderColor: `${completionColor}30` }}>
                       <FaRegFileAlt style={{ color: completionColor }} className="text-xs" />
                     </div>
                     <div className="flex-1 min-w-0">
@@ -509,23 +565,16 @@ export default function AnalyzerPage() {
                       </p>
                       <p className="text-[10px] text-[var(--surface-400)] mt-0.5">{completion}% complete</p>
                     </div>
-                    <span className={cn(
-                      "text-[10px] font-bold px-2 py-0.5 rounded-full border shrink-0",
+                    <span className={cn("text-[10px] font-bold px-2 py-0.5 rounded-full border shrink-0",
                       completion >= 80 ? "bg-emerald-500/10 text-emerald-600 border-emerald-500/20"
-                        : completion >= 60 ? "bg-amber-500/10 text-amber-600 border-amber-500/20"
-                          : "bg-red-500/10 text-red-600 border-red-500/20"
-                    )}>
+                      : completion >= 60 ? "bg-amber-500/10 text-amber-600 border-amber-500/20"
+                      : "bg-red-500/10 text-red-600 border-red-500/20")}>
                       {completion >= 80 ? "Strong" : completion >= 60 ? "Fair" : "Weak"}
                     </span>
                   </div>
-
-                  {/* Completion bar */}
                   <div className="h-1.5 rounded-full bg-[var(--surface-200)] overflow-hidden mb-3">
-                    <div className="h-full rounded-full transition-all duration-700 ease-out"
-                      style={{ width: `${completion}%`, backgroundColor: completionColor }} />
+                    <div className="h-full rounded-full transition-all duration-700 ease-out" style={{ width: `${completion}%`, backgroundColor: completionColor }} />
                   </div>
-
-                  {/* Stats grid */}
                   <div className="grid grid-cols-2 gap-1.5">
                     {[
                       ["Name", `${cvData.personal?.firstName || ""} ${cvData.personal?.lastName || ""}`.trim() || "—"],
@@ -540,8 +589,6 @@ export default function AnalyzerPage() {
                     ))}
                   </div>
                 </div>
-
-                {/* Missing fields hint */}
                 {missingFields.length > 0 && (
                   <div className="border-t border-[var(--surface-200)] px-3 py-2 bg-amber-500/[0.03]">
                     <p className="text-[10px] text-amber-600 font-medium flex items-start gap-1.5">
@@ -567,9 +614,7 @@ export default function AnalyzerPage() {
                           <FaCheckCircle className="text-[9px]" />
                           {pdfText.split(" ").filter(Boolean).length.toLocaleString()} words extracted
                         </p>
-                        <p className="text-[10px] text-[var(--surface-400)] mt-0.5">
-                          {(pdfFile.size / 1024).toFixed(0)} KB · PDF
-                        </p>
+                        <p className="text-[10px] text-[var(--surface-400)] mt-0.5">{(pdfFile.size / 1024).toFixed(0)} KB · PDF</p>
                       </div>
                       <button onClick={() => { setPdfFile(null); setPdfText(""); setPdfError(""); }}
                         className="w-6 h-6 rounded-full flex items-center justify-center hover:bg-red-100 text-[var(--surface-400)] hover:text-red-500 transition-all cursor-pointer">
@@ -591,7 +636,7 @@ export default function AnalyzerPage() {
                       "rounded-xl border-2 border-dashed p-6 text-center cursor-pointer transition-all duration-200",
                       dragging ? "border-[var(--brand-500)] bg-[var(--brand-500)]/5 scale-[1.01]"
                         : pdfError ? "border-red-300 bg-red-50/50"
-                          : "border-[var(--surface-300)] hover:border-[var(--brand-400)] hover:bg-[var(--surface-100)]"
+                        : "border-[var(--surface-300)] hover:border-[var(--brand-400)] hover:bg-[var(--surface-100)]"
                     )}>
                     {parsing ? (
                       <div className="flex flex-col items-center gap-2.5">
@@ -605,28 +650,18 @@ export default function AnalyzerPage() {
                       </div>
                     ) : (
                       <div className="flex flex-col items-center gap-2">
-                        <div className={cn(
-                          "w-12 h-12 rounded-xl flex items-center justify-center transition-all",
-                          dragging ? "bg-[var(--brand-500)]/15 scale-110"
-                            : pdfError ? "bg-red-100" : "bg-[var(--surface-200)]"
-                        )}>
+                        <div className={cn("w-12 h-12 rounded-xl flex items-center justify-center transition-all",
+                          dragging ? "bg-[var(--brand-500)]/15 scale-110" : pdfError ? "bg-red-100" : "bg-[var(--surface-200)]")}>
                           <FaCloudUploadAlt className={cn("text-xl transition-all",
-                            dragging ? "text-[var(--brand-500)]"
-                              : pdfError ? "text-red-400" : "text-[var(--surface-400)]")} />
+                            dragging ? "text-[var(--brand-500)]" : pdfError ? "text-red-400" : "text-[var(--surface-400)]")} />
                         </div>
                         <div>
-                          <p className="text-xs font-bold text-[var(--surface-700)]">
-                            {dragging ? "Drop to upload!" : "Drop PDF here"}
-                          </p>
+                          <p className="text-xs font-bold text-[var(--surface-700)]">{dragging ? "Drop to upload!" : "Drop PDF here"}</p>
                           <p className="text-[10px] text-[var(--surface-400)] mt-0.5">or click to browse · Max 10MB</p>
                         </div>
-                        {pdfError ? (
-                          <p className="text-[10px] text-red-500 font-semibold flex items-center gap-1 bg-red-50 px-2 py-1 rounded-lg">
-                            <FaExclamationCircle />{pdfError}
-                          </p>
-                        ) : (
-                          <p className="text-[10px] text-[var(--surface-400)]">Text-based PDFs only</p>
-                        )}
+                        {pdfError
+                          ? <p className="text-[10px] text-red-500 font-semibold flex items-center gap-1 bg-red-50 px-2 py-1 rounded-lg"><FaExclamationCircle />{pdfError}</p>
+                          : <p className="text-[10px] text-[var(--surface-400)]">Text-based PDFs only</p>}
                       </div>
                     )}
                   </div>
@@ -637,7 +672,7 @@ export default function AnalyzerPage() {
 
           <div className="h-px bg-[var(--surface-200)] mx-4" />
 
-          {/* ── INDUSTRY CHIPS ────────────────────────────────────────── */}
+          {/* Industry chips */}
           <div className="p-4 pb-3">
             <div className="flex items-center justify-between mb-2.5">
               <p className="text-[10px] font-bold uppercase tracking-widest text-[var(--surface-400)] flex items-center gap-1.5">
@@ -654,18 +689,12 @@ export default function AnalyzerPage() {
                 <button key={id} onClick={() => setIndustry(id)}
                   className={cn(
                     "flex items-center gap-2 px-2.5 py-2 rounded-xl border text-left transition-all duration-150 cursor-pointer",
-                    industry === id
-                      ? `${bg} border-[var(--brand-500)]/25 shadow-sm`
-                      : "border-[var(--surface-200)] hover:border-[var(--surface-300)] hover:bg-[var(--surface-100)] bg-transparent"
+                    industry === id ? `${bg} border-[var(--brand-500)]/25 shadow-sm` : "border-[var(--surface-200)] hover:border-[var(--surface-300)] hover:bg-[var(--surface-100)] bg-transparent"
                   )}>
-                  <div className={cn("w-6 h-6 rounded-lg flex items-center justify-center shrink-0 transition-all",
-                    industry === id ? bg : "bg-[var(--surface-200)]")}>
+                  <div className={cn("w-6 h-6 rounded-lg flex items-center justify-center shrink-0 transition-all", industry === id ? bg : "bg-[var(--surface-200)]")}>
                     <Icon className={cn("text-[10px]", industry === id ? color : "text-[var(--surface-400)]")} />
                   </div>
-                  <span className={cn("text-[11px] font-semibold truncate transition-colors",
-                    industry === id ? "text-[var(--surface-900)]" : "text-[var(--surface-600)]")}>
-                    {label}
-                  </span>
+                  <span className={cn("text-[11px] font-semibold truncate transition-colors", industry === id ? "text-[var(--surface-900)]" : "text-[var(--surface-600)]")}>{label}</span>
                   {industry === id && <FaCheckCircle className={cn("text-[9px] ml-auto shrink-0", color)} />}
                 </button>
               ))}
@@ -674,62 +703,43 @@ export default function AnalyzerPage() {
 
           <div className="h-px bg-[var(--surface-200)] mx-4" />
 
-          {/* ── JOB DESCRIPTION ───────────────────────────────────────── */}
+          {/* Job description */}
           <div className="p-4 pb-3">
             <div className="flex items-center justify-between mb-2.5">
               <p className="text-[10px] font-bold uppercase tracking-widest text-[var(--surface-400)] flex items-center gap-1.5">
                 <FaBullseye className="text-[9px]" /> Job Description
               </p>
-              <div className="flex items-center gap-2">
-                <span className="text-[9px] font-medium text-[var(--surface-600)] bg-[var(--surface-200)] px-1.5 py-0.5 rounded-md">Optional</span>
-              </div>
+              <span className="text-[9px] font-medium text-[var(--surface-600)] bg-[var(--surface-200)] px-1.5 py-0.5 rounded-md">Optional</span>
             </div>
             <div className="relative">
-              <textarea
-                value={jd}
-                onChange={e => setJd(e.target.value)}
-                rows={5}
+              <textarea value={jd} onChange={e => setJd(e.target.value)} rows={5}
                 placeholder="Paste job description for tailored keyword analysis, ATS scoring, and role-specific suggestions…"
-                className="w-full px-3 py-2.5 pr-8 rounded-xl text-xs leading-relaxed resize-none
-                 border border-[var(--surface-300)] bg-[var(--surface-50)]
-                 text-[var(--surface-800)] placeholder-[var(--surface-400)]
-                 focus:outline-none focus:ring-2 focus:ring-[var(--brand-500)]/20
-                 focus:border-[var(--brand-500)] transition-colors"
-              />
+                className="w-full px-3 py-2.5 pr-8 rounded-xl text-xs leading-relaxed resize-none border border-[var(--surface-300)] bg-[var(--surface-50)] text-[var(--surface-800)] placeholder-[var(--surface-400)] focus:outline-none focus:ring-2 focus:ring-[var(--brand-500)]/20 focus:border-[var(--brand-500)] transition-colors" />
               {jd.trim() && (
-                <button
-                  onClick={() => setJd("")}
-                  className="absolute top-2.5 right-2.5 w-5 h-5 rounded-full flex items-center justify-center text-[var(--surface-400)] hover:text-red-500 hover:bg-red-50 transition-all cursor-pointer"
-                >
+                <button onClick={() => setJd("")}
+                  className="absolute top-2.5 right-2.5 w-5 h-5 rounded-full flex items-center justify-center text-[var(--surface-400)] hover:text-red-500 hover:bg-red-50 transition-all cursor-pointer">
                   <FaTimesCircle className="text-[10px]" />
                 </button>
               )}
             </div>
-            {jd.trim() ? (
-              <div className="mt-2 flex items-center gap-1.5 text-[10px] text-emerald-600 font-semibold">
-                <FaCheckCircle className="text-[9px]" />Role-specific analysis enabled · {wordCount} words
-              </div>
-            ) : (
-              <p className="mt-2 text-[10px] text-[var(--surface-400)] leading-relaxed">
-                Adding a JD improves keyword matching accuracy by up to 30%
-              </p>
-            )}
+            {jd.trim()
+              ? <div className="mt-2 flex items-center gap-1.5 text-[10px] text-emerald-600 font-semibold"><FaCheckCircle className="text-[9px]" />Role-specific analysis enabled · {wordCount} words</div>
+              : <p className="mt-2 text-[10px] text-[var(--surface-400)] leading-relaxed">Adding a JD improves keyword matching accuracy by up to 30%</p>}
           </div>
 
           <div className="h-px bg-[var(--surface-200)] mx-4" />
 
-          {/* ── ANALYZE BUTTON ────────────────────────────────────────── */}
+          {/* Analyze button */}
           <div className="p-4">
-            <button onClick={runAnalysis} disabled={canAnalyze}
+            <button onClick={runAnalysis} disabled={canRunAnalyze || !canAnalyzeDB}
               className={cn(
                 "w-full h-11 rounded-xl font-bold text-sm flex items-center justify-center gap-2 transition-all duration-200 relative overflow-hidden cursor-pointer",
-                canAnalyze
+                (canRunAnalyze || !canAnalyzeDB)
                   ? "opacity-50 cursor-not-allowed bg-[var(--surface-300)] text-[var(--surface-500)]"
-                  : "text-white shadow-lg hover:shadow-xl hover:-translate-y-0.5 active:translate-y-0 active:shadow-md"
+                  : "text-white shadow-lg hover:shadow-xl hover:-translate-y-0.5 active:translate-y-0"
               )}
-              style={canAnalyze ? {} : { background: "linear-gradient(135deg, var(--brand-500) 0%, #8b5cf6 100%)" }}>
-              {/* Shimmer */}
-              {!canAnalyze && (
+              style={(canRunAnalyze || !canAnalyzeDB) ? {} : { background: "linear-gradient(135deg, var(--brand-500) 0%, #8b5cf6 100%)" }}>
+              {!(canRunAnalyze || !canAnalyzeDB) && (
                 <span className="absolute inset-0 pointer-events-none" style={{
                   background: "linear-gradient(105deg, transparent 40%, rgba(255,255,255,0.15) 50%, transparent 60%)",
                   animation: "analyzerShimmer 2.5s infinite",
@@ -738,40 +748,37 @@ export default function AnalyzerPage() {
               <style>{`@keyframes analyzerShimmer{0%{transform:translateX(-100%)}100%{transform:translateX(200%)}}`}</style>
               {analyzing ? <><FaSpinner className="animate-spin text-base" />Analyzing…</>
                 : parsing ? <><FaSpinner className="animate-spin text-base" />Parsing PDF…</>
-                  : source === "upload" && !pdfText ? <><FaCloudUploadAlt className="text-base" />Upload PDF First</>
-                    : <><FaBrain className="text-base" />Analyze CV</>}
+                : !canAnalyzeDB ? <><FaBolt className="text-base" />Daily Limit Reached</>
+                : source === "upload" && !pdfText ? <><FaCloudUploadAlt className="text-base" />Upload PDF First</>
+                : <><FaBrain className="text-base" />Analyze CV</>}
             </button>
 
-            {!isPro && remainingScans === 0 && (
-              <div className="mt-2.5 flex items-center gap-2 p-2.5 rounded-xl bg-amber-500/8 border border-amber-500/20">
-                <FaBolt className="text-amber-500 text-xs shrink-0" />
-                <p className="text-[10px] text-amber-700 font-medium leading-snug">
-                  Daily limit reached. Upgrade to Pro for unlimited scans.
+            {!canAnalyzeDB && (
+              <div className="mt-2.5 flex items-center gap-2 p-2.5 rounded-xl bg-red-50 border border-red-200">
+                <FaBolt className="text-red-500 text-xs shrink-0" />
+                <p className="text-[10px] text-red-700 font-medium leading-snug">
+                  Daily limit reached ({dailyAnalysisLimit}/day). Resets in {getMidnightTime()}.
                 </p>
               </div>
             )}
           </div>
         </aside>
 
-        {/* ── HISTORY BACKDROP ──────────────────────────────────────────── */}
+        {/* History backdrop */}
         {historyOpen && (
           <div className="fixed inset-0 z-[60] bg-black/50 animate-fadeIn" onClick={() => setHistoryOpen(false)} />
         )}
 
-        {/* ══ HISTORY DRAWER ══════════════════════════════════════════════ */}
-        <div
-          ref={historyDrawerRef}
-          className={cn(
-            "fixed z-[70] flex flex-col md:min-h-screen",
-            "bg-[var(--surface-50)] border-[var(--surface-200)]",
-            "sm:inset-y-0 sm:right-0 sm:w-[380px] sm:border-l sm:rounded-none sm:shadow-2xl",
-            "bottom-0 left-0 right-0 max-h-[88vh] rounded-t-3xl border-t sm:bottom-auto sm:left-auto sm:top-0",
-            "transition-transform duration-300 ease-[cubic-bezier(0.32,0.72,0,1)]",
-            historyOpen ? "translate-y-0 sm:translate-x-0" : "translate-y-full sm:translate-y-0 sm:translate-x-full"
-          )}
-        >
-          <div ref={historyHandleRef}
-            className="sm:hidden flex justify-center pt-3 pb-2 shrink-0 cursor-grab active:cursor-grabbing touch-none select-none">
+        {/* History drawer */}
+        <div ref={historyDrawerRef} className={cn(
+          "fixed z-[70] flex flex-col md:min-h-screen",
+          "bg-[var(--surface-50)] border-[var(--surface-200)]",
+          "sm:inset-y-0 sm:right-0 sm:w-[380px] sm:border-l sm:rounded-none sm:shadow-2xl",
+          "bottom-0 left-0 right-0 max-h-[88vh] rounded-t-3xl border-t sm:bottom-auto sm:left-auto sm:top-0",
+          "transition-transform duration-300 ease-[cubic-bezier(0.32,0.72,0,1)]",
+          historyOpen ? "translate-y-0 sm:translate-x-0" : "translate-y-full sm:translate-y-0 sm:translate-x-full"
+        )}>
+          <div ref={historyHandleRef} className="sm:hidden flex justify-center pt-3 pb-2 shrink-0 cursor-grab active:cursor-grabbing touch-none select-none">
             <div className="w-10 h-1.5 rounded-full bg-[var(--surface-300)] pointer-events-none" />
           </div>
 
@@ -790,7 +797,7 @@ export default function AnalyzerPage() {
             <div className="flex items-center gap-2">
               {history.length > 0 && (
                 <button onClick={() => setClearAllConfirm(true)}
-                  className="flex items-center gap-1 px-3 py-1 rounded-full bg-red-50 text-red-600 font-semibold text-xs hover:bg-red-100 hover:shadow-md transition-all duration-200 shadow-sm border border-red-200 cursor-pointer">
+                  className="flex items-center gap-1 px-3 py-1 rounded-full bg-red-50 text-red-600 font-semibold text-xs hover:bg-red-100 border border-red-200 cursor-pointer">
                   <FaTrash className="text-[10px]" />Clear All
                 </button>
               )}
@@ -827,43 +834,34 @@ export default function AnalyzerPage() {
             ) : (
               <div className="space-y-2 pt-1">
                 {history.map((scan, idx) => {
-                  const isLatest = idx === 0;
-                  const savedDate = new Date(scan.analyzedAt || scan.timestamp || Date.now());
-                  const diffMs = Date.now() - savedDate;
-                  const diffMins = Math.floor(diffMs / 60000);
-                  const diffHours = Math.floor(diffMs / 3600000);
-                  const diffDays = Math.floor(diffMs / 86400000);
+                  const isLatest    = idx === 0;
+                  const savedDate   = new Date(scan.analyzedAt || scan.timestamp || Date.now());
+                  const diffMs      = Date.now() - savedDate;
+                  const diffMins    = Math.floor(diffMs / 60000);
+                  const diffHours   = Math.floor(diffMs / 3600000);
+                  const diffDays    = Math.floor(diffMs / 86400000);
                   const relativeTime = diffMins < 1 ? "Just now"
-                    : diffMins < 60 ? `${diffMins}m ago`
-                      : diffHours < 24 ? `${diffHours}h ago`
-                        : diffDays < 7 ? `${diffDays}d ago`
-                          : savedDate.toLocaleDateString(undefined, { day: "numeric", month: "short" });
-                  const fullTime = savedDate.toLocaleDateString(undefined, {
-                    day: "numeric", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit"
-                  });
-                  const accentHex = gradeHex(scan.overallScore || 0);
-                  const col = scoreColor(scan.overallScore || 0);
+                    : diffMins < 60   ? `${diffMins}m ago`
+                    : diffHours < 24  ? `${diffHours}h ago`
+                    : diffDays < 7    ? `${diffDays}d ago`
+                    : savedDate.toLocaleDateString(undefined, { day: "numeric", month: "short" });
+                  const fullTime    = savedDate.toLocaleDateString(undefined, { day: "numeric", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit" });
+                  const accentHex   = gradeHex(scan.overallScore || 0);
+                  const col         = scoreColor(scan.overallScore || 0);
 
                   return (
                     <div key={scan.scanId || idx} className={cn(
                       "p-3.5 rounded-xl border transition-all duration-200",
-                      isLatest
-                        ? "border-[var(--brand-500)]/30 bg-[var(--brand-500)]/[0.04] shadow-sm"
-                        : "border-[var(--surface-200)] bg-[var(--surface-100)] hover:border-[var(--surface-300)] hover:bg-[var(--surface-50)]"
+                      isLatest ? "border-[var(--brand-500)]/30 bg-[var(--brand-500)]/[0.04] shadow-sm"
+                               : "border-[var(--surface-200)] bg-[var(--surface-100)] hover:border-[var(--surface-300)] hover:bg-[var(--surface-50)]"
                     )}>
                       <div className="flex items-center gap-2 mb-1.5">
                         <div className="w-3 h-3 rounded-full shrink-0 border border-black/10 shadow-sm" style={{ background: accentHex }} />
-                        <span className="font-semibold text-sm text-[var(--surface-900)] truncate flex-1">
-                          {scan.meta?.cvName || scan.cvName || "CV Analysis"}
-                        </span>
-                        {isLatest && (
-                          <span className="shrink-0 px-1.5 py-0.5 rounded-md bg-[var(--brand-500)] text-white text-[9px] font-bold uppercase tracking-wide">Latest</span>
-                        )}
+                        <span className="font-semibold text-sm text-[var(--surface-900)] truncate flex-1">{scan.meta?.cvName || scan.cvName || "CV Analysis"}</span>
+                        {isLatest && <span className="shrink-0 px-1.5 py-0.5 rounded-md bg-[var(--brand-500)] text-white text-[9px] font-bold uppercase tracking-wide">Latest</span>}
                       </div>
                       <div className="flex items-center gap-2 mb-3">
-                        <span className="text-[11px] text-[var(--surface-500)]" title={fullTime}>
-                          {relativeTime} · {fullTime.split(",").slice(0, 2).join(",")}
-                        </span>
+                        <span className="text-[11px] text-[var(--surface-500)]" title={fullTime}>{relativeTime} · {fullTime.split(",").slice(0, 2).join(",")}</span>
                         <span className="w-1 h-1 rounded-full bg-[var(--surface-300)]" />
                         <span className={cn("text-[10px] font-semibold uppercase tracking-wider px-1.5 py-0.5 rounded", col.bg, col.text)}>
                           {scan.grade || "—"} · {scan.overallScore || 0}/100
@@ -881,14 +879,12 @@ export default function AnalyzerPage() {
                         })}
                       </div>
                       <div className="flex gap-2">
-                        <button
-                          onClick={() => { setResult(scan); setMobileTab("results"); setHistoryOpen(false); showToast("Loaded previous analysis", "info"); }}
-                          className="flex-1 flex items-center justify-center gap-1.5 py-2 rounded-lg bg-[var(--brand-500)] hover:bg-[var(--brand-600)] active:scale-[0.97] text-white text-xs font-semibold transition-all duration-150 cursor-pointer">
+                        <button onClick={() => { setResult(scan); setMobileTab("results"); setHistoryOpen(false); showToast("Loaded previous analysis", "info"); }}
+                          className="flex-1 flex items-center justify-center gap-1.5 py-2 rounded-lg bg-[var(--brand-500)] hover:bg-[var(--brand-600)] active:scale-[0.97] text-white text-xs font-semibold transition-all cursor-pointer">
                           <FaArrowRotateLeft className="text-[10px]" />Load Results
                         </button>
-                        <button
-                          onClick={() => setDeleteConfirm({ id: scan.scanId || idx, name: scan.meta?.cvName || "this scan" })}
-                          className="w-9 h-9 flex items-center justify-center rounded-lg text-[var(--surface-500)] hover:text-red-500 hover:bg-red-50 border border-[var(--surface-200)] hover:border-red-200 transition-all duration-150 cursor-pointer">
+                        <button onClick={() => setDeleteConfirm({ id: scan.scanId || idx, name: scan.meta?.cvName || "this scan" })}
+                          className="w-9 h-9 flex items-center justify-center rounded-lg text-[var(--surface-500)] hover:text-red-500 hover:bg-red-50 border border-[var(--surface-200)] hover:border-red-200 transition-all cursor-pointer">
                           <FaTrash className="text-[10px]" />
                         </button>
                       </div>
@@ -900,7 +896,7 @@ export default function AnalyzerPage() {
           </div>
         </div>
 
-        {/* ── MAIN RESULTS PANEL ──────────────────────────────────────────── */}
+        {/* Results panel */}
         <main className={cn("flex-1 overflow-y-auto bg-[var(--surface-100)]", mobileTab !== "results" && "hidden lg:block")}>
           {!result ? (
             <div className="flex items-center justify-center min-h-full p-8">
@@ -952,16 +948,15 @@ export default function AnalyzerPage() {
                   <h3 className="text-xs font-semibold uppercase tracking-wider text-[var(--surface-500)] mb-4">Score Breakdown</h3>
                   <div className="space-y-3">
                     {[
-                      { label: "Content Quality", score: result.contentScore, weight: "30%", icon: FaFeather },
-                      { label: "ATS Compatibility", score: result.atsScore, weight: "25%", icon: FaShieldAlt },
-                      { label: "Keyword Match", score: result.keywordScore, weight: "20%", icon: FaKey },
-                      { label: "Formatting", score: result.formattingScore, weight: "15%", icon: FaPalette },
-                      { label: "Writing Quality", score: result.grammarScore, weight: "10%", icon: FaFeather },
+                      { label: "Content Quality",  score: result.contentScore,    weight: "30%", icon: FaFeather   },
+                      { label: "ATS Compatibility", score: result.atsScore,        weight: "25%", icon: FaShieldAlt },
+                      { label: "Keyword Match",     score: result.keywordScore,    weight: "20%", icon: FaKey       },
+                      { label: "Formatting",        score: result.formattingScore, weight: "15%", icon: FaPalette   },
+                      { label: "Writing Quality",   score: result.grammarScore,    weight: "10%", icon: FaFeather   },
                     ].map(p => <MiniBar key={p.label} {...p} />)}
                   </div>
                 </div>
               </div>
-
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4 items-stretch">
                 <div className="rounded-2xl border border-[var(--surface-200)] bg-[var(--surface-50)] overflow-hidden flex flex-col">
                   <ATSScore atsScore={result.atsScore} atsDetails={result.atsDetails} />
@@ -970,7 +965,6 @@ export default function AnalyzerPage() {
                   <KeywordMatch keywordScore={result.keywordScore} matchedKeywords={result.matchedKeywords} missingKeywords={result.missingKeywords} />
                 </div>
               </div>
-
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4 items-stretch">
                 <div className="rounded-2xl border border-[var(--surface-200)] bg-[var(--surface-50)] overflow-hidden flex flex-col">
                   <ImpactMetrics impactMetrics={result.impactMetrics} />
@@ -979,7 +973,6 @@ export default function AnalyzerPage() {
                   <SectionAnalysis sectionBreakdown={result.sectionBreakdown} />
                 </div>
               </div>
-
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4 items-stretch">
                 <div className="rounded-2xl border border-[var(--surface-200)] bg-[var(--surface-50)] overflow-hidden flex flex-col">
                   <SkillsGapRadar radarData={result.skillsGapRadar} />
@@ -988,7 +981,6 @@ export default function AnalyzerPage() {
                   <SuggestionsPanel suggestions={result.suggestions} />
                 </div>
               </div>
-
               <div className="rounded-2xl border border-[var(--surface-200)] bg-[var(--surface-50)] overflow-hidden flex flex-col">
                 <DownloadReport analysisResult={result} showToast={showToast} />
               </div>
@@ -997,11 +989,10 @@ export default function AnalyzerPage() {
         </main>
       </div>
 
-      {/* ══ DELETE / CLEAR-ALL MODAL ═════════════════════════════════════ */}
+      {/* Delete / clear modal */}
       {(deleteConfirm || clearAllConfirm) && (
         <div className="fixed inset-0 z-[100] flex items-end sm:items-center justify-center p-0 sm:p-4">
-          <div className="absolute inset-0 bg-black/60 animate-fadeIn"
-            onClick={() => { setDeleteConfirm(null); setClearAllConfirm(false); }} />
+          <div className="absolute inset-0 bg-black/60 animate-fadeIn" onClick={() => { setDeleteConfirm(null); setClearAllConfirm(false); }} />
           <div className="relative z-10 w-full sm:max-w-[400px] bg-[var(--surface-50)] sm:rounded-2xl rounded-t-3xl shadow-2xl border border-[var(--surface-200)] overflow-hidden animate-scaleIn">
             <div className="sm:hidden flex justify-center pt-3 pb-1">
               <div className="w-10 h-1 rounded-full bg-[var(--surface-300)]" />
@@ -1028,30 +1019,27 @@ export default function AnalyzerPage() {
               )}
               <p className="text-[12px] text-[var(--surface-400)] mb-5 flex items-center gap-1.5">
                 <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" className="shrink-0 text-amber-400">
-                  <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z" />
-                  <line x1="12" y1="9" x2="12" y2="13" /><line x1="12" y1="17" x2="12.01" y2="17" />
+                  <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/>
+                  <line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/>
                 </svg>
                 This action cannot be undone
               </p>
               <div className="flex gap-3">
                 <button onClick={() => { setDeleteConfirm(null); setClearAllConfirm(false); }}
-                  className="flex-1 py-2.5 rounded-xl border border-[var(--surface-300)] text-sm font-semibold text-[var(--surface-700)] hover:bg-[var(--surface-100)] active:scale-[0.97] transition cursor-pointer">
+                  className="flex-1 py-2.5 rounded-xl border border-[var(--surface-300)] text-sm font-semibold text-[var(--surface-700)] hover:bg-[var(--surface-100)] transition cursor-pointer">
                   Cancel
                 </button>
-                <button
-                  onClick={() => {
-                    if (deleteConfirm) {
-                      setHistory(prev => prev.filter((s, i) => (s.scanId || i) !== deleteConfirm.id));
-                      if (result?.scanId === deleteConfirm.id) setResult(null);
-                      showToast("Scan deleted", "success");
-                      setDeleteConfirm(null);
-                    } else {
-                      setHistory([]); setResult(null);
-                      showToast("All scans deleted!", "success");
-                      setClearAllConfirm(false);
-                    }
-                  }}
-                  className="flex-1 py-2.5 rounded-xl bg-red-500 hover:bg-red-600 text-white text-sm font-semibold flex items-center justify-center gap-2 shadow-lg shadow-red-500/20 active:scale-[0.97] transition cursor-pointer">
+                <button onClick={() => {
+                  if (deleteConfirm) {
+                    setHistory(prev => prev.filter((s, i) => (s.scanId || i) !== deleteConfirm.id));
+                    if (result?.scanId === deleteConfirm.id) setResult(null);
+                    showToast("Scan deleted", "success"); setDeleteConfirm(null);
+                  } else {
+                    setHistory([]); setResult(null);
+                    showToast("All scans deleted!", "success"); setClearAllConfirm(false);
+                  }
+                }}
+                  className="flex-1 py-2.5 rounded-xl bg-red-500 hover:bg-red-600 text-white text-sm font-semibold flex items-center justify-center gap-2 shadow-lg shadow-red-500/20 transition cursor-pointer">
                   <FaTrash className="text-xs" />{deleteConfirm ? "Delete" : "Clear All"}
                 </button>
               </div>
