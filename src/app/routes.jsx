@@ -7,6 +7,9 @@ const EditorPage = lazy(() => import("../features/editor/pages/EditorPage"));
 const AnalyzerPage = lazy(() => import("../features/analyzer/pages/AnalyzerPage"));
 const TemplatesPage = lazy(() => import("../features/template/pages/Templatepage"));
 const NotFound = lazy(() => import("../shared/pages/NotFound"));
+const PrivacyPolicy = lazy(() => import("../shared/pages/PrivacyPolicy"));
+const TermsOfService = lazy(() => import("../shared/pages/ServicePolicy"));
+
 
 // Auth pages
 const LoginPage = lazy(() => import("../features/auth/pages/LoginPage"));
@@ -52,7 +55,8 @@ const AppRoutes = () => (
       {/* Public */}
       <Route path="/" element={<LandingPage />} />
       <Route path="/editor" element={<EditorPage />} />
-
+      <Route path="/privacypolicy" element={<PrivacyPolicy />} />
+      <Route path="/servicepolicy" element={<TermsOfService />} />
       {/* Guest only — redirect if logged in */}
       <Route path="/auth/login"
         element={<GuestRoute><LoginPage /></GuestRoute>} />

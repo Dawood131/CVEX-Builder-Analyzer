@@ -1,9 +1,14 @@
 // src/features/auth/components/AuthLayout.jsx
-import React from "react";
+import React, { useEffect } from "react";
 import { Link } from "react-router-dom";
 import { cn } from "../../../utils/helper";
 
 export default function AuthLayout({ children, title, subtitle }) {
+
+  useEffect(() => {
+    window.scrollTo(0, 0);
+  }, []);
+
   return (
     <div className="min-h-screen flex flex-col bg-[var(--surface-100)]">
 

@@ -35,8 +35,8 @@ function Footer() {
   ];
 
   const legalLinks = [
-    ["Privacy Policy", "/privacy-policy"],
-    ["Terms of Service", "/terms-of-service"],
+    ["Privacy Policy", "/privacypolicy"],
+    ["Terms of Service", "/servicepolicy"],
     ["Cookie Policy", "/cookie-policy"],
     ["Contact", "/contact"],
   ];
@@ -107,22 +107,6 @@ function Footer() {
               </ul>
             </div>
 
-            {/* Resources */}
-            <div className="flex-1">
-              <div className="font-semibold mb-4">Resources</div>
-              <ul className="space-y-2 text-sm">
-                {resourceLinks.map(([text, path]) => (
-                  <li key={text}>
-                    <button
-                      className="hover:text-purple-300  transition-colors duration-200 text-left cursor-pointer"
-                      onClick={() => safeNavigate(path)}
-                    >
-                      {text}
-                    </button>
-                  </li>
-                ))}
-              </ul>
-            </div>
 
             {/* Legal */}
             <div className="flex-1">
@@ -140,6 +124,26 @@ function Footer() {
                 ))}
               </ul>
             </div>
+
+
+            {/* Resources */}
+            <div className="flex-1">
+              <div className="font-semibold mb-4">Resources</div>
+              <ul className="space-y-2 text-sm">
+                {resourceLinks.map(([text, path]) => (
+                  <li key={text}>
+                    <button
+                      className="hover:text-purple-300  transition-colors duration-200 text-left cursor-pointer"
+                      onClick={() => safeNavigate(path)}
+                    >
+                      {text}
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            </div>
+
+
 
           </div>
         </div>
