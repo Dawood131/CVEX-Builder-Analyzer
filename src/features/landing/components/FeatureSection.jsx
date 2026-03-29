@@ -23,7 +23,7 @@ function FeaturesSection() {
   return (
     <section
       id="features"
-      className="py-20 lg:py-28 bg-[var(--brand-400)] dark:bg-[var(--surface-100)] border-y border-[var(--surface-200)]"
+      className="py-20 lg:py-28 bg-[var(--surface-100)] border-y border-[var(--surface-200)]"
     >
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
 
@@ -44,14 +44,12 @@ function FeaturesSection() {
                 direction="up"
                 className="text-start rounded-2xl
                   transition-transform duration-300 ease-out
-                  hover:scale-[1.03]
-                  bg-[var(--surface-50)] dark:bg-[var(--surface-200)]
+                  hover:scale-[1.03] bg-[var(--surface-200)]
                   border border-[var(--border)] p-6"
               >
                 {/* Icon Box */}
                 <div className="w-16 h-16 rounded-2xl flex items-center justify-center mb-6
-                                transition-transform duration-300 hover:scale-110
-                                bg-[var(--brand-50)] dark:bg-[var(--brand-700)]/20">
+                                transition-transform duration-300 hover:scale-110 bg-[var(--brand-700)]/20">
                   {FeatureIcon && (
                     <FeatureIcon className="text-2xl text-[var(--brand-500)]" />
                   )}

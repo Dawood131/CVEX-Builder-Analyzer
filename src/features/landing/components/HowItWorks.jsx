@@ -45,8 +45,7 @@ function HowItWorksSection() {
                 <div className="relative inline-flex mb-6">
 
                   {/* Icon Box */}
-                  <div className="w-16 h-16 rounded-2xl
-                                  dark:bg-[var(--surface-300)]/20
+                  <div className="w-16 h-16 rounded-2xl bg-[var(--surface-300)]/20
                                   flex items-center justify-center
                                   transition-transform duration-300 hover:scale-110">
                     {StepIcon && (

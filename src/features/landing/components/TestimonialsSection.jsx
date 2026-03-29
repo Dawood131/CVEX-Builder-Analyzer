@@ -46,7 +46,7 @@ function TestimonialsSection() {
   return (
     <section
       id="testimonials"
-      className="py-20 lg:py-28 bg-[var(--brand-400)] dark:bg-[var(--surface-100)] overflow-hidden"
+      className="py-20 lg:py-28 bg-[var(--surface-100)] overflow-hidden"
     >
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <SectionHeader
@@ -60,7 +60,7 @@ function TestimonialsSection() {
             {cards.map((t, idx) => (
               <div
                 key={idx}
-                className="flex-shrink-0 w-full sm:w-[80%] lg:w-[32%] bg-[var(--surface-50)] dark:bg-[var(--surface-50)] rounded-2xl border border-[var(--surface-200)] p-6"
+                className="flex-shrink-0 w-full sm:w-[80%] lg:w-[32%] bg-[var(--surface-50)] rounded-2xl border border-[var(--surface-200)] p-6"
               >
                 {/* User */}
                 <div className="flex items-center gap-3">

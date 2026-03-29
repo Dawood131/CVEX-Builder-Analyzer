@@ -143,7 +143,7 @@ function Navbar() {
                             ['How It Works', () => scrollToSection('how-it-works')],
                         ].map(([label, fn]) => (
                             <button key={label} onClick={fn}
-                                className="text-[var(--surface-100)] dark:text-[var(--surface-800)] font-medium text-sm px-3 py-1.5 rounded-md transition-colors duration-200 hover:bg-[var(--surface-50)] dark:hover:bg-[var(--surface-200)] focus:outline-none cursor-pointer">
+                                className="text-[var(--surface-800)] font-medium text-sm px-3 py-1.5 rounded-md transition-colors duration-200 hover:bg-[var(--surface-200)] focus:outline-none cursor-pointer">
                                 {label}
                             </button>
                         ))}
@@ -189,36 +189,50 @@ function Navbar() {
 
             {/* Mobile Menu */}
             <div className={`md:hidden px-4 space-y-2 rounded-b-xl shadow-lg overflow-hidden transition-all duration-300 ease-in-out
-        ${mobileOpen ? 'max-h-[500px] py-3 opacity-100' : 'max-h-0 py-0 opacity-0'}`}>
+    ${mobileOpen ? 'max-h-[500px] py-3 opacity-100' : 'max-h-0 py-0 opacity-0'}`}>
 
-                {/* Mobile user info */}
+                {/* Mobile user info + options */}
                 {user && (
-                    <div className="flex items-center gap-3 px-1 py-2 border-b border-[var(--surface-200)] mb-2">
-                        <Avatar user={user} profile={profile} />
-                        <div className="min-w-0">
-                            <p className="text-xs font-bold text-[var(--surface-900)] truncate">
-                                {profile?.full_name || user?.email?.split("@")[0]}
-                            </p>
-                            <p className="text-[10px] text-[var(--surface-400)] truncate">{user?.email}</p>
+                    <div className="border-b border-[var(--surface-200)] mb-2 pb-3">
+                        {/* User info */}
+                        <div className="flex items-center gap-3 px-1 py-2">
+                            <div className="min-w-0">
+                                <p className="text-xs font-bold text-[var(--surface-900)] truncate">
+                                    {profile?.full_name || user?.email?.split("@")[0]}
+                                </p>
+                                <p className="text-[10px] text-[var(--surface-400)] truncate">{user?.email}</p>
+                            </div>
                         </div>
+
+                        {/* Change password */}
+                        <button
+                            onClick={() => { setMobileOpen(false); navigate("/auth/reset-password"); }}
+                            className="w-full flex items-center gap-2.5 px-2 py-2 rounded-lg text-sm font-medium text-[var(--surface-700)] hover:bg-[var(--surface-100)] transition-colors cursor-pointer mt-1"
+                        >
+                            <svg width="13" height="13" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+                                <rect x="3" y="11" width="18" height="11" rx="2" ry="2" />
+                                <path d="M7 11V7a5 5 0 0110 0v4" />
+                            </svg>
+                            Change password
+                        </button>
                     </div>
                 )}
 
                 <button type="button"
-                    className="py-2 text-sm font-medium w-full text-left text-[var(--surface-900)] dark:text-[var(--surface-800)] hover:text-[var(--brand-500)] transition-colors"
+                    className="py-2 text-sm font-medium w-full text-left text-[var(--surface-800)] hover:text-[var(--brand-500)] transition-colors"
                     onClick={() => { setMobileOpen(false); navigate('/templates'); }}>
                     Templates
                 </button>
 
                 <button type="button"
-                    className="py-2 text-sm font-medium w-full text-left text-[var(--surface-900)] dark:text-[var(--surface-800)] hover:text-[var(--brand-500)] transition-colors"
+                    className="py-2 text-sm font-medium w-full text-left text-[var(--surface-800)] hover:text-[var(--brand-500)] transition-colors"
                     onClick={() => { setMobileOpen(false); navigate('/analyzer'); }}>
                     AI Analyzer
                 </button>
 
                 {['Features', 'How It Works'].map((link) => (
                     <button key={link}
-                        className="block py-2 text-sm font-medium w-full text-left text-[var(--surface-900)] dark:text-[var(--surface-800)] hover:text-[var(--brand-500)] transition-colors"
+                        className="block py-2 text-sm font-medium w-full text-left text-[var(--surface-800)] hover:text-[var(--brand-500)] transition-colors"
                         onClick={() => { scrollToSection(link.toLowerCase().replace(/\s+/g, '-')); setMobileOpen(false); }}>
                         {link}
                     </button>

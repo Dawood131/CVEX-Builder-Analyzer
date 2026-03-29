@@ -29,7 +29,7 @@ import {
 } from "react-icons/fa6";
 
 /* ─── PDF.js ─────────────────────────────────────────────────────────────── */
-const PDFJS_CDN    = "https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js";
+const PDFJS_CDN = "https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js";
 const PDFJS_WORKER = "https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js";
 
 async function loadPdfJs() {
@@ -45,10 +45,10 @@ async function loadPdfJs() {
 
 async function extractPdfText(file) {
   const lib = await loadPdfJs();
-  const pdf  = await lib.getDocument({ data: await file.arrayBuffer() }).promise;
+  const pdf = await lib.getDocument({ data: await file.arrayBuffer() }).promise;
   const pages = [];
   for (let i = 1; i <= pdf.numPages; i++) {
-    const page    = await pdf.getPage(i);
+    const page = await pdf.getPage(i);
     const content = await page.getTextContent();
     pages.push(content.items.map(item => item.str).join(" "));
   }
@@ -56,20 +56,11 @@ async function extractPdfText(file) {
 }
 
 /* ─── helpers ────────────────────────────────────────────────────────────── */
-function getMidnightTime() {
-  const midnight = new Date();
-  midnight.setHours(24, 0, 0, 0);
-  const diffMs = midnight - new Date();
-  const hrs  = Math.floor(diffMs / 3600000);
-  const mins = Math.floor((diffMs % 3600000) / 60000);
-  return hrs > 0 ? `${hrs}h ${mins}m` : `${mins}m`;
-}
-
 function scoreColor(s) {
   if (s >= 80) return { text: "text-emerald-500", bg: "bg-emerald-500/10", border: "border-emerald-500/20", hex: "#10b981" };
-  if (s >= 65) return { text: "text-blue-500",    bg: "bg-blue-500/10",    border: "border-blue-500/20",    hex: "#3b82f6" };
-  if (s >= 50) return { text: "text-amber-500",   bg: "bg-amber-500/10",   border: "border-amber-500/20",   hex: "#f59e0b" };
-  return              { text: "text-red-500",     bg: "bg-red-500/10",     border: "border-red-500/20",     hex: "#ef4444" };
+  if (s >= 65) return { text: "text-blue-500", bg: "bg-blue-500/10", border: "border-blue-500/20", hex: "#3b82f6" };
+  if (s >= 50) return { text: "text-amber-500", bg: "bg-amber-500/10", border: "border-amber-500/20", hex: "#f59e0b" };
+  return { text: "text-red-500", bg: "bg-red-500/10", border: "border-red-500/20", hex: "#ef4444" };
 }
 
 function gradeHex(score) {
@@ -81,14 +72,14 @@ function gradeHex(score) {
 
 /* ─── Circular score ─────────────────────────────────────────────────────── */
 function CircleScore({ score = 0, size = 80, stroke = 7 }) {
-  const r    = (size - stroke * 2) / 2;
+  const r = (size - stroke * 2) / 2;
   const circ = 2 * Math.PI * r;
-  const pct  = Math.min(100, Math.max(0, score));
-  const col  = scoreColor(pct);
+  const pct = Math.min(100, Math.max(0, score));
+  const col = scoreColor(pct);
   return (
     <svg width={size} height={size} style={{ transform: "rotate(-90deg)" }}>
-      <circle cx={size/2} cy={size/2} r={r} fill="none" stroke="var(--surface-200)" strokeWidth={stroke} />
-      <circle cx={size/2} cy={size/2} r={r} fill="none" stroke={col.hex} strokeWidth={stroke}
+      <circle cx={size / 2} cy={size / 2} r={r} fill="none" stroke="var(--surface-200)" strokeWidth={stroke} />
+      <circle cx={size / 2} cy={size / 2} r={r} fill="none" stroke={col.hex} strokeWidth={stroke}
         strokeDasharray={circ} strokeDashoffset={circ * (1 - pct / 100)} strokeLinecap="round"
         style={{ transition: "stroke-dashoffset 1s ease" }} />
     </svg>
@@ -124,49 +115,92 @@ function useSwipeToClose({ onClose, isOpen, threshold = 80 }) {
   const drawerRef   = useRef(null);
   const handleRef   = useRef(null);
   const startY      = useRef(null);
+  const startX      = useRef(null);
   const currentY    = useRef(null);
   const isDragging  = useRef(false);
+  const isLocked    = useRef(false);
   const animFrameId = useRef(null);
   const onCloseRef  = useRef(onClose);
+  const isOpenRef   = useRef(isOpen); // ✅ ref se track karo
+
   useEffect(() => { onCloseRef.current = onClose; }, [onClose]);
+  useEffect(() => { isOpenRef.current = isOpen; }, [isOpen]); // ✅ sync
 
   useEffect(() => {
-    const handle = handleRef.current, drawer = drawerRef.current;
-    if (!handle || !drawer) return;
+    const drawer = drawerRef.current;
+    if (!drawer) return;
+
     const onTouchStart = (e) => {
-      if (!isOpen) return;
-      startY.current = currentY.current = e.touches[0].clientY;
-      isDragging.current = true; drawer.style.transition = "none";
-    };
-    const onTouchMove = (e) => {
-      if (!isDragging.current) return;
-      currentY.current = e.touches[0].clientY;
-      const diff = Math.max(0, currentY.current - startY.current);
-      if (diff > 0) {
-        e.preventDefault();
-        if (animFrameId.current) cancelAnimationFrame(animFrameId.current);
-        animFrameId.current = requestAnimationFrame(() => { if (drawer) drawer.style.transform = `translateY(${diff}px)`; });
-      }
-    };
-    const onTouchEnd = () => {
-      if (!isDragging.current) return;
+      if (!isOpenRef.current) return;
+      const scrollable = e.target.closest("[data-swipe-ignore]");
+      if (scrollable) return;
+
+      startY.current   = e.touches[0].clientY;
+      startX.current   = e.touches[0].clientX;
+      currentY.current = startY.current;
       isDragging.current = false;
+      isLocked.current   = false;
+    };
+
+    const onTouchMove = (e) => {
+      if (!isOpenRef.current) return;
+      if (startY.current === null) return;
+
+      const dy = e.touches[0].clientY - startY.current;
+      const dx = Math.abs(e.touches[0].clientX - startX.current);
+
+      if (!isDragging.current && !isLocked.current) {
+        if (Math.abs(dy) < 5 && dx < 5) return;
+        if (dx > Math.abs(dy)) { isLocked.current = true; return; }
+        if (dy < 0) { isLocked.current = true; return; }
+        isDragging.current = true;
+        drawer.style.transition = "none";
+      }
+
+      if (isLocked.current || !isDragging.current) return;
+
+      currentY.current = e.touches[0].clientY;
+      const diff = Math.max(0, dy);
+      e.preventDefault();
+      if (animFrameId.current) cancelAnimationFrame(animFrameId.current);
+      animFrameId.current = requestAnimationFrame(() => {
+        if (drawer) drawer.style.transform = `translateY(${diff}px)`;
+      });
+    };
+
+    const onTouchEnd = () => {
+      if (!isDragging.current) { startY.current = null; return; }
+      isDragging.current = false;
+      isLocked.current   = false;
       const diff = Math.max(0, (currentY.current ?? 0) - (startY.current ?? 0));
-      drawer.style.transition = ""; drawer.style.transform = "";
-      if (diff > threshold) onCloseRef.current();
+
+      drawer.style.transition = "transform 0.3s cubic-bezier(0.32,0.72,0,1)";
+      if (diff > threshold) {
+        drawer.style.transform = "translateY(100%)";
+        setTimeout(() => {
+          drawer.style.transform = "";
+          drawer.style.transition = "";
+          onCloseRef.current();
+        }, 280);
+      } else {
+        drawer.style.transform = "";
+        setTimeout(() => { drawer.style.transition = ""; }, 320);
+      }
       startY.current = currentY.current = null;
     };
-    handle.addEventListener("touchstart", onTouchStart, { passive: true });
-    handle.addEventListener("touchmove",  onTouchMove,  { passive: false });
-    handle.addEventListener("touchend",   onTouchEnd,   { passive: true });
+
+    // ✅ Poore drawer pe attach karo
+    drawer.addEventListener("touchstart", onTouchStart, { passive: true });
+    drawer.addEventListener("touchmove",  onTouchMove,  { passive: false });
+    drawer.addEventListener("touchend",   onTouchEnd,   { passive: true });
+
     return () => {
-      handle.removeEventListener("touchstart", onTouchStart);
-      handle.removeEventListener("touchmove",  onTouchMove);
-      handle.removeEventListener("touchend",   onTouchEnd);
+      drawer.removeEventListener("touchstart", onTouchStart);
+      drawer.removeEventListener("touchmove",  onTouchMove);
+      drawer.removeEventListener("touchend",   onTouchEnd);
       if (animFrameId.current) cancelAnimationFrame(animFrameId.current);
       if (drawer) { drawer.style.transform = ""; drawer.style.transition = ""; }
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [threshold]);
 
   return { drawerRef, handleRef };
@@ -174,16 +208,16 @@ function useSwipeToClose({ onClose, isOpen, threshold = 80 }) {
 
 /* ─── Industry options ───────────────────────────────────────────────────── */
 const INDUSTRY_OPTIONS = [
-  { id: "technology",  label: "Technology",  icon: FaLaptopCode,    color: "text-blue-500",    bg: "bg-blue-500/10"    },
-  { id: "healthcare",  label: "Healthcare",  icon: FaHeartbeat,     color: "text-rose-500",    bg: "bg-rose-500/10"    },
-  { id: "finance",     label: "Finance",     icon: FaDollarSign,    color: "text-emerald-500", bg: "bg-emerald-500/10" },
-  { id: "education",   label: "Education",   icon: FaGraduationCap, color: "text-amber-500",   bg: "bg-amber-500/10"   },
-  { id: "marketing",   label: "Marketing",   icon: FaChartLine,     color: "text-purple-500",  bg: "bg-purple-500/10"  },
-  { id: "engineering", label: "Engineering", icon: FaHardHat,       color: "text-orange-500",  bg: "bg-orange-500/10"  },
-  { id: "science",     label: "Science",     icon: FaFlask,         color: "text-cyan-500",    bg: "bg-cyan-500/10"    },
-  { id: "hr",          label: "HR",          icon: FaUsers,         color: "text-pink-500",    bg: "bg-pink-500/10"    },
-  { id: "legal",       label: "Legal",       icon: FaClipboardList, color: "text-slate-500",   bg: "bg-slate-500/10"   },
-  { id: "retail",      label: "Retail",      icon: FaStore,         color: "text-yellow-500",  bg: "bg-yellow-500/10"  },
+  { id: "technology", label: "Technology", icon: FaLaptopCode, color: "text-blue-500", bg: "bg-blue-500/10" },
+  { id: "healthcare", label: "Healthcare", icon: FaHeartbeat, color: "text-rose-500", bg: "bg-rose-500/10" },
+  { id: "finance", label: "Finance", icon: FaDollarSign, color: "text-emerald-500", bg: "bg-emerald-500/10" },
+  { id: "education", label: "Education", icon: FaGraduationCap, color: "text-amber-500", bg: "bg-amber-500/10" },
+  { id: "marketing", label: "Marketing", icon: FaChartLine, color: "text-purple-500", bg: "bg-purple-500/10" },
+  { id: "engineering", label: "Engineering", icon: FaHardHat, color: "text-orange-500", bg: "bg-orange-500/10" },
+  { id: "science", label: "Science", icon: FaFlask, color: "text-cyan-500", bg: "bg-cyan-500/10" },
+  { id: "hr", label: "HR", icon: FaUsers, color: "text-pink-500", bg: "bg-pink-500/10" },
+  { id: "legal", label: "Legal", icon: FaClipboardList, color: "text-slate-500", bg: "bg-slate-500/10" },
+  { id: "retail", label: "Retail", icon: FaStore, color: "text-yellow-500", bg: "bg-yellow-500/10" },
 ];
 
 function calcCompletion(cvData) {
@@ -193,18 +227,19 @@ function calcCompletion(cvData) {
     !!(cvData.personal?.phone),
     !!(cvData.personal?.title),
     (cvData.experience || []).length > 0,
-    (cvData.skills     || []).length > 0,
+    (cvData.skills || []).length > 0,
     !!(cvData.summary?.text),
-    (cvData.education  || []).length > 0,
+    (cvData.education || []).length > 0,
   ];
   return Math.round((checks.filter(Boolean).length / checks.length) * 100);
 }
 
 /* ══ Limit badge — sidebar ───────────────────────────────────────────────── */
-function ScanLimitCard({ used, total }) {
+// ✅ getResetTime prop added
+function ScanLimitCard({ used, total, getResetTime }) {
   const remaining = Math.max(0, total - used);
-  const isLimit   = remaining === 0;
-  const barColor  = isLimit ? "#ef4444" : used === total - 1 ? "#f59e0b" : "var(--brand-500)";
+  const isLimit = remaining === 0;
+  const barColor = isLimit ? "#ef4444" : used === total - 1 ? "#f59e0b" : "var(--brand-500)";
 
   return (
     <div className={cn(
@@ -212,7 +247,6 @@ function ScanLimitCard({ used, total }) {
       isLimit ? "border-red-200" : "border-[var(--surface-200)]"
     )}>
       <div className={cn("px-3 py-2.5", isLimit ? "bg-red-50" : "bg-[var(--surface-100)]")}>
-        {/* Header */}
         <div className="flex items-center justify-between mb-2">
           <div className="flex items-center gap-1.5">
             <FaBolt className="text-[10px]" style={{ color: barColor }} />
@@ -225,7 +259,6 @@ function ScanLimitCard({ used, total }) {
           </span>
         </div>
 
-        {/* Pip dots */}
         <div className="flex items-center gap-1.5 mb-2">
           {Array.from({ length: total }).map((_, i) => (
             <div key={i} className={cn(
@@ -241,15 +274,15 @@ function ScanLimitCard({ used, total }) {
           ))}
         </div>
 
-        {/* Progress bar */}
         <div className="h-1 rounded-full bg-[var(--surface-200)] overflow-hidden mb-1.5">
           <div className="h-full rounded-full transition-all duration-700"
             style={{ width: `${(used / total) * 100}%`, background: isLimit ? "#ef4444" : "linear-gradient(90deg, var(--brand-500), #8b5cf6)" }} />
         </div>
 
+        {/* ✅ getResetTime() use karo getMidnightTime() ki jagah */}
         <p className={cn("text-[10px]", isLimit ? "text-red-600 font-semibold" : "text-[var(--surface-400)]")}>
           {isLimit
-            ? `⚠ Limit reached — resets in ${getMidnightTime()}`
+            ? `⚠ Limit reached — resets in ${getResetTime?.() || "24h"}`
             : `${remaining} scan${remaining !== 1 ? "s" : ""} left · resets in 24h`}
         </p>
       </div>
@@ -263,25 +296,35 @@ function ScanLimitCard({ used, total }) {
 export default function AnalyzerPage() {
   const navigate = useNavigate();
   const { cvData, darkMode, setDarkMode, showToast } = useCV();
-  const { user }  = useAuth();
-  const { canAnalyze: canAnalyzeDB, remainingAnalysis, dailyAnalysisLimit, usage, incrementAnalysis } = useUserLimits();
+  const { user } = useAuth();
+
+  // ✅ getAnalysisResetTime add kiya
+  const {
+    canAnalyze: canAnalyzeDB,
+    remainingAnalysis,
+    dailyAnalysisLimit,
+    usage,
+    incrementAnalysis,
+    getAnalysisResetTime,
+  } = useUserLimits();
+
   const { saveAnalysis } = useAnalysisDatabase();
 
   const fileInputRef = useRef(null);
 
-  const [analyzing,      setAnalyzing]      = useState(false);
-  const [jd,             setJd]             = useState("");
-  const [industry,       setIndustry]       = useState("technology");
-  const [source,         setSource]         = useState("builder");
-  const [mobileTab,      setMobileTab]      = useState("input");
-  const [dragging,       setDragging]       = useState(false);
-  const [pdfFile,        setPdfFile]        = useState(null);
-  const [pdfText,        setPdfText]        = useState("");
-  const [parsing,        setParsing]        = useState(false);
-  const [pdfError,       setPdfError]       = useState("");
-  const [historyOpen,    setHistoryOpen]    = useState(false);
-  const [deleteConfirm,  setDeleteConfirm]  = useState(null);
-  const [clearAllConfirm,setClearAllConfirm]= useState(false);
+  const [analyzing, setAnalyzing] = useState(false);
+  const [jd, setJd] = useState("");
+  const [industry, setIndustry] = useState("technology");
+  const [source, setSource] = useState("builder");
+  const [mobileTab, setMobileTab] = useState("input");
+  const [dragging, setDragging] = useState(false);
+  const [pdfFile, setPdfFile] = useState(null);
+  const [pdfText, setPdfText] = useState("");
+  const [parsing, setParsing] = useState(false);
+  const [pdfError, setPdfError] = useState("");
+  const [historyOpen, setHistoryOpen] = useState(false);
+  const [deleteConfirm, setDeleteConfirm] = useState(null);
+  const [clearAllConfirm, setClearAllConfirm] = useState(false);
 
   const [history, setHistory] = useState(() => {
     try { return JSON.parse(localStorage.getItem("cvex_analyzerHistory") || "[]"); }
@@ -299,7 +342,7 @@ export default function AnalyzerPage() {
   useEffect(() => {
     try {
       if (result) localStorage.setItem("cvex_currentAnalysis", JSON.stringify(result));
-      else        localStorage.removeItem("cvex_currentAnalysis");
+      else localStorage.removeItem("cvex_currentAnalysis");
     } catch { }
   }, [result]);
 
@@ -326,7 +369,7 @@ export default function AnalyzerPage() {
 
   const handlePdf = async (file) => {
     if (!file || file.type !== "application/pdf") { setPdfError("Only PDF files are supported."); return; }
-    if (file.size > 10 * 1024 * 1024)             { setPdfError("File too large. Max 10MB."); return; }
+    if (file.size > 10 * 1024 * 1024) { setPdfError("File too large. Max 10MB."); return; }
     setPdfError(""); setParsing(true); setPdfFile(file); setPdfText("");
     try {
       const text = await extractPdfText(file);
@@ -337,15 +380,15 @@ export default function AnalyzerPage() {
       setPdfText(text);
       showToast(`PDF parsed — ${text.split(" ").filter(Boolean).length} words`, "success");
     } catch { setPdfError("Failed to parse PDF."); setPdfFile(null); }
-    finally  { setParsing(false); }
+    finally { setParsing(false); }
   };
 
   const runAnalysis = async () => {
     if (!user) { showToast("Please login to analyze.", "error"); return; }
 
-    // DB-based daily limit check
     if (!canAnalyzeDB) {
-      showToast(`Daily limit reached (${dailyAnalysisLimit}/day). Resets in ${getMidnightTime()}.`, "error");
+      // ✅ getAnalysisResetTime() use karo
+      showToast(`Daily limit reached (${dailyAnalysisLimit}/day). Resets in ${getAnalysisResetTime() || "24h"}.`, "error");
       return;
     }
 
@@ -357,12 +400,8 @@ export default function AnalyzerPage() {
       setAnalyzing(true);
       showToast("Analyzing with Gemini AI…", "info");
       const r = await AnalyzerEngine.analyze(cv, { jobDescription: jd, industry });
-
-      // Save to DB
       await saveAnalysis(r);
-      // Increment daily usage
       await incrementAnalysis();
-
       setResult(r);
       setHistory(prev => [r, ...prev.slice(0, 19)]);
       setMobileTab("results");
@@ -375,15 +414,15 @@ export default function AnalyzerPage() {
 
   const canRunAnalyze = analyzing || parsing || (source === "upload" && !pdfText);
 
-  const wordCount        = jd.trim() ? jd.trim().split(/\s+/).length : 0;
-  const completion       = source === "builder" ? calcCompletion(cvData) : null;
-  const completionColor  = completion >= 80 ? "#10b981" : completion >= 60 ? "#f59e0b" : "#ef4444";
+  const wordCount = jd.trim() ? jd.trim().split(/\s+/).length : 0;
+  const completion = source === "builder" ? calcCompletion(cvData) : null;
+  const completionColor = completion >= 80 ? "#10b981" : completion >= 60 ? "#f59e0b" : "#ef4444";
 
   const missingFields = [];
   if (source === "builder") {
-    if (!cvData.personal?.email?.trim())       missingFields.push("Email");
-    if (!cvData.personal?.phone?.trim())       missingFields.push("Phone");
-    if (!cvData.summary?.text?.trim())         missingFields.push("Summary");
+    if (!cvData.personal?.email?.trim()) missingFields.push("Email");
+    if (!cvData.personal?.phone?.trim()) missingFields.push("Phone");
+    if (!cvData.personal?.summary?.trim()) missingFields.push("Summary");
     if ((cvData.education || []).length === 0) missingFields.push("Education");
   }
 
@@ -418,15 +457,16 @@ export default function AnalyzerPage() {
                     background: i < (usage.analyses || 0)
                       ? "#cbd5e1"
                       : !canAnalyzeDB ? "#ef4444"
-                      : (usage.analyses || 0) === dailyAnalysisLimit - 1 ? "#f59e0b" : "#10b981"
+                        : (usage.analyses || 0) === dailyAnalysisLimit - 1 ? "#f59e0b" : "#10b981"
                   }} />
                 ))}
               </div>
               <span className={cn("font-bold", !canAnalyzeDB ? "text-red-600" : "text-[var(--surface-700)]")}>
                 {usage.analyses || 0}/{dailyAnalysisLimit}
               </span>
+              {/* ✅ getAnalysisResetTime() use karo */}
               <span className={cn("hidden lg:inline", !canAnalyzeDB ? "text-red-400" : "text-[var(--surface-400)]")}>
-                · {!canAnalyzeDB ? `resets in ${getMidnightTime()}` : "resets in 24h"}
+                · {!canAnalyzeDB ? `resets in ${getAnalysisResetTime() || "24h"}` : "resets in 24h"}
               </span>
             </div>
           )}
@@ -463,9 +503,9 @@ export default function AnalyzerPage() {
             <span className="hidden sm:inline">
               {analyzing ? "Analyzing…"
                 : parsing ? "Parsing…"
-                : !canAnalyzeDB ? "Limit Reached"
-                : source === "upload" && !pdfText ? "Upload PDF First"
-                : "Analyze CV"}
+                  : !canAnalyzeDB ? "Limit Reached"
+                    : source === "upload" && !pdfText ? "Upload PDF First"
+                      : "Analyze CV"}
             </span>
           </Button>
         </div>
@@ -491,8 +531,9 @@ export default function AnalyzerPage() {
               {usage.analyses || 0}/{dailyAnalysisLimit} scans today
             </span>
           </div>
+          {/* ✅ getAnalysisResetTime() use karo */}
           <span className={cn("font-medium", !canAnalyzeDB ? "text-red-500" : "text-[var(--surface-400)]")}>
-            {!canAnalyzeDB ? `resets in ${getMidnightTime()}` : "resets in 24h"}
+            {!canAnalyzeDB ? `resets in ${getAnalysisResetTime() || "24h"}` : "resets in 24h"}
           </span>
         </div>
       )}
@@ -518,11 +559,12 @@ export default function AnalyzerPage() {
           mobileTab !== "input" && "hidden lg:flex"
         )}>
 
-          {/* Scan limit card */}
+          {/* ✅ getAnalysisResetTime prop pass karo */}
           {user && (
             <ScanLimitCard
               used={usage.analyses || 0}
               total={dailyAnalysisLimit}
+              getResetTime={getAnalysisResetTime}
             />
           )}
 
@@ -567,8 +609,8 @@ export default function AnalyzerPage() {
                     </div>
                     <span className={cn("text-[10px] font-bold px-2 py-0.5 rounded-full border shrink-0",
                       completion >= 80 ? "bg-emerald-500/10 text-emerald-600 border-emerald-500/20"
-                      : completion >= 60 ? "bg-amber-500/10 text-amber-600 border-amber-500/20"
-                      : "bg-red-500/10 text-red-600 border-red-500/20")}>
+                        : completion >= 60 ? "bg-amber-500/10 text-amber-600 border-amber-500/20"
+                          : "bg-red-500/10 text-red-600 border-red-500/20")}>
                       {completion >= 80 ? "Strong" : completion >= 60 ? "Fair" : "Weak"}
                     </span>
                   </div>
@@ -636,7 +678,7 @@ export default function AnalyzerPage() {
                       "rounded-xl border-2 border-dashed p-6 text-center cursor-pointer transition-all duration-200",
                       dragging ? "border-[var(--brand-500)] bg-[var(--brand-500)]/5 scale-[1.01]"
                         : pdfError ? "border-red-300 bg-red-50/50"
-                        : "border-[var(--surface-300)] hover:border-[var(--brand-400)] hover:bg-[var(--surface-100)]"
+                          : "border-[var(--surface-300)] hover:border-[var(--brand-400)] hover:bg-[var(--surface-100)]"
                     )}>
                     {parsing ? (
                       <div className="flex flex-col items-center gap-2.5">
@@ -748,16 +790,17 @@ export default function AnalyzerPage() {
               <style>{`@keyframes analyzerShimmer{0%{transform:translateX(-100%)}100%{transform:translateX(200%)}}`}</style>
               {analyzing ? <><FaSpinner className="animate-spin text-base" />Analyzing…</>
                 : parsing ? <><FaSpinner className="animate-spin text-base" />Parsing PDF…</>
-                : !canAnalyzeDB ? <><FaBolt className="text-base" />Daily Limit Reached</>
-                : source === "upload" && !pdfText ? <><FaCloudUploadAlt className="text-base" />Upload PDF First</>
-                : <><FaBrain className="text-base" />Analyze CV</>}
+                  : !canAnalyzeDB ? <><FaBolt className="text-base" />Daily Limit Reached</>
+                    : source === "upload" && !pdfText ? <><FaCloudUploadAlt className="text-base" />Upload PDF First</>
+                      : <><FaBrain className="text-base" />Analyze CV</>}
             </button>
 
+            {/* ✅ getAnalysisResetTime() use karo */}
             {!canAnalyzeDB && (
               <div className="mt-2.5 flex items-center gap-2 p-2.5 rounded-xl bg-red-50 border border-red-200">
                 <FaBolt className="text-red-500 text-xs shrink-0" />
                 <p className="text-[10px] text-red-700 font-medium leading-snug">
-                  Daily limit reached ({dailyAnalysisLimit}/day). Resets in {getMidnightTime()}.
+                  Daily limit reached ({dailyAnalysisLimit}/day). Resets in {getAnalysisResetTime() || "24h"}.
                 </p>
               </div>
             )}
@@ -816,7 +859,8 @@ export default function AnalyzerPage() {
             </div>
           )}
 
-          <div className="flex-1 overflow-y-auto px-4 pb-6 space-y-2 min-h-0">
+          {/* ✅ data-swipe-ignore: andar scroll kaam kare, drawer swipe na ho */}
+          <div data-swipe-ignore className="flex-1 overflow-y-auto px-4 pb-6 space-y-2 min-h-0">
             {history.length === 0 ? (
               <div className="flex flex-col items-center justify-center h-full gap-4 py-16">
                 <div className="w-20 h-20 rounded-2xl bg-[var(--surface-100)] border-2 border-dashed border-[var(--surface-300)] flex items-center justify-center">
@@ -834,26 +878,26 @@ export default function AnalyzerPage() {
             ) : (
               <div className="space-y-2 pt-1">
                 {history.map((scan, idx) => {
-                  const isLatest    = idx === 0;
-                  const savedDate   = new Date(scan.analyzedAt || scan.timestamp || Date.now());
-                  const diffMs      = Date.now() - savedDate;
-                  const diffMins    = Math.floor(diffMs / 60000);
-                  const diffHours   = Math.floor(diffMs / 3600000);
-                  const diffDays    = Math.floor(diffMs / 86400000);
+                  const isLatest = idx === 0;
+                  const savedDate = new Date(scan.analyzedAt || scan.timestamp || Date.now());
+                  const diffMs = Date.now() - savedDate;
+                  const diffMins = Math.floor(diffMs / 60000);
+                  const diffHours = Math.floor(diffMs / 3600000);
+                  const diffDays = Math.floor(diffMs / 86400000);
                   const relativeTime = diffMins < 1 ? "Just now"
-                    : diffMins < 60   ? `${diffMins}m ago`
-                    : diffHours < 24  ? `${diffHours}h ago`
-                    : diffDays < 7    ? `${diffDays}d ago`
-                    : savedDate.toLocaleDateString(undefined, { day: "numeric", month: "short" });
-                  const fullTime    = savedDate.toLocaleDateString(undefined, { day: "numeric", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit" });
-                  const accentHex   = gradeHex(scan.overallScore || 0);
-                  const col         = scoreColor(scan.overallScore || 0);
+                    : diffMins < 60 ? `${diffMins}m ago`
+                      : diffHours < 24 ? `${diffHours}h ago`
+                        : diffDays < 7 ? `${diffDays}d ago`
+                          : savedDate.toLocaleDateString(undefined, { day: "numeric", month: "short" });
+                  const fullTime = savedDate.toLocaleDateString(undefined, { day: "numeric", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit" });
+                  const accentHex = gradeHex(scan.overallScore || 0);
+                  const col = scoreColor(scan.overallScore || 0);
 
                   return (
                     <div key={scan.scanId || idx} className={cn(
                       "p-3.5 rounded-xl border transition-all duration-200",
                       isLatest ? "border-[var(--brand-500)]/30 bg-[var(--brand-500)]/[0.04] shadow-sm"
-                               : "border-[var(--surface-200)] bg-[var(--surface-100)] hover:border-[var(--surface-300)] hover:bg-[var(--surface-50)]"
+                        : "border-[var(--surface-200)] bg-[var(--surface-100)] hover:border-[var(--surface-300)] hover:bg-[var(--surface-50)]"
                     )}>
                       <div className="flex items-center gap-2 mb-1.5">
                         <div className="w-3 h-3 rounded-full shrink-0 border border-black/10 shadow-sm" style={{ background: accentHex }} />
@@ -948,11 +992,11 @@ export default function AnalyzerPage() {
                   <h3 className="text-xs font-semibold uppercase tracking-wider text-[var(--surface-500)] mb-4">Score Breakdown</h3>
                   <div className="space-y-3">
                     {[
-                      { label: "Content Quality",  score: result.contentScore,    weight: "30%", icon: FaFeather   },
-                      { label: "ATS Compatibility", score: result.atsScore,        weight: "25%", icon: FaShieldAlt },
-                      { label: "Keyword Match",     score: result.keywordScore,    weight: "20%", icon: FaKey       },
-                      { label: "Formatting",        score: result.formattingScore, weight: "15%", icon: FaPalette   },
-                      { label: "Writing Quality",   score: result.grammarScore,    weight: "10%", icon: FaFeather   },
+                      { label: "Content Quality", score: result.contentScore, weight: "30%", icon: FaFeather },
+                      { label: "ATS Compatibility", score: result.atsScore, weight: "25%", icon: FaShieldAlt },
+                      { label: "Keyword Match", score: result.keywordScore, weight: "20%", icon: FaKey },
+                      { label: "Formatting", score: result.formattingScore, weight: "15%", icon: FaPalette },
+                      { label: "Writing Quality", score: result.grammarScore, weight: "10%", icon: FaFeather },
                     ].map(p => <MiniBar key={p.label} {...p} />)}
                   </div>
                 </div>
@@ -1019,8 +1063,8 @@ export default function AnalyzerPage() {
               )}
               <p className="text-[12px] text-[var(--surface-400)] mb-5 flex items-center gap-1.5">
                 <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" className="shrink-0 text-amber-400">
-                  <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/>
-                  <line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/>
+                  <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z" />
+                  <line x1="12" y1="9" x2="12" y2="13" /><line x1="12" y1="17" x2="12.01" y2="17" />
                 </svg>
                 This action cannot be undone
               </p>

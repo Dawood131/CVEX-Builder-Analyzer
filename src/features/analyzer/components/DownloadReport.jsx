@@ -130,27 +130,26 @@ export function renderAnalysisHTML(r) {
     font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Helvetica,Arial,sans-serif;
     background:#fff;color:#1e293b;font-size:10px;line-height:1.4;
     -webkit-print-color-adjust:exact;print-color-adjust:exact;
+    padding:0 8mm 12mm 8mm;
   }
   @page{
     size:A4;
-    margin:14mm 14mm 12mm 14mm;
+    margin:0;
   }
   @media print{
     body{zoom:.93}
-    .pg2{page-break-before:always;padding-top:8px}
   }
 </style>
 </head>
 <body>
 
 <!-- ══ HEADER BAND ══════════════════════════════════════════════════════ -->
-<div style="background:linear-gradient(135deg,#4338ca 0%,#6d28d9 100%);border-radius:10px;padding:16px 20px;display:flex;align-items:center;justify-content:space-between;gap:16px;margin-bottom:14px">
+<div style="background:linear-gradient(135deg,#4338ca 0%,#6d28d9 100%);padding:16px 8mm;display:flex;align-items:center;justify-content:space-between;gap:16px;margin-bottom:14px;margin-left:-8mm;margin-right:-8mm;">
 
   <!-- Left: title + meta -->
   <div style="flex:1;min-width:0">
     <div style="font-size:8px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:#a5b4fc;margin-bottom:4px">CVEX AI Analyzer</div>
     <div style="font-size:18px;font-weight:800;color:#fff;line-height:1.1;margin-bottom:4px">Resume Analysis Report</div>
-    <div style="font-size:9.5px;color:#c7d2fe">${cvName}${ind ? " · " + ind : ""} · ${date}</div>
   </div>
 
   <!-- Score ring -->
@@ -274,7 +273,7 @@ const handleDownload = async () => {
               </svg>
             </div>
             <span className="text-[13px] font-bold text-[var(--surface-900)]">Download Report</span>
-            <span className="hidden sm:inline text-[10px] text-[var(--surface-500)] bg-[var(--surface-200)] border border-[var(--surface-300)] px-2 py-0.5 rounded-full">PDF · 1 page</span>
+            <span className="hidden sm:inline text-[10px] text-[var(--surface-500)] bg-[var(--surface-200)] border border-[var(--surface-300)] px-2 py-0.5 rounded-full">PDF</span>
           </div>
         </div>
 

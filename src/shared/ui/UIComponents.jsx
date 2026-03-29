@@ -23,7 +23,7 @@ function Button({ children, variant = 'primary', size = 'md', className = '', on
       }
     },
     ghost: {
-      className: 'bg-transparent text-[var(--surface-100)] dark:text-[var(--surface-900)] hover:bg-[var(--surface-700)] dark:hover:bg-[var(--surface-200)]',
+      className: 'bg-transparent text-[var(--surface-900)] hover:bg-[var(--surface-200)]',
     },
     danger: {
       className: 'bg-red-50 text-red-600 border border-red-200 hover:bg-red-600 hover:text-white',

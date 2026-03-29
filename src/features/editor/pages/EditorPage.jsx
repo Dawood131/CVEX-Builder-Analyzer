@@ -39,15 +39,6 @@ function useDebounce(value, delay = 0) {
     return debounced;
 }
 
-function getMidnightTime() {
-    const midnight = new Date();
-    midnight.setHours(24, 0, 0, 0);
-    const diffMs = midnight - new Date();
-    const hrs  = Math.floor(diffMs / 3600000);
-    const mins = Math.floor((diffMs % 3600000) / 60000);
-    return hrs > 0 ? `${hrs}h ${mins}m` : `${mins}m`;
-}
-
 export async function compressImage(file, maxPx = 800, quality = 0.75) {
     return new Promise((resolve) => {
         const img = new Image();
@@ -133,60 +124,108 @@ const SectionCard = memo(function SectionCard({
 
 /* ── Swipe-to-close ──────────────────────────────────────────────────────── */
 function useSwipeToClose({ onClose, isOpen, threshold = 80 }) {
-    const drawerRef    = useRef(null);
-    const handleRef    = useRef(null);
-    const startY       = useRef(null);
-    const currentY     = useRef(null);
-    const isDragging   = useRef(false);
-    const animFrameId  = useRef(null);
-    const onCloseRef   = useRef(onClose);
+    const drawerRef   = useRef(null);
+    const handleRef   = useRef(null); // sirf visual handle ke liye (drag indicator)
+    const startY      = useRef(null);
+    const startX      = useRef(null);
+    const currentY    = useRef(null);
+    const isDragging  = useRef(false);
+    const isLocked    = useRef(false); // horizontal scroll lock
+    const animFrameId = useRef(null);
+    const onCloseRef  = useRef(onClose);
+    const isOpenRef   = useRef(isOpen); // ✅ ref se isOpen track karo — stale closure fix
+
     useEffect(() => { onCloseRef.current = onClose; }, [onClose]);
+    useEffect(() => { isOpenRef.current = isOpen; }, [isOpen]); // ✅ sync karo
 
     useEffect(() => {
-        const handle = handleRef.current;
         const drawer = drawerRef.current;
-        if (!handle || !drawer) return;
+        if (!drawer) return;
 
         const onTouchStart = (e) => {
-            if (!isOpen) return;
-            startY.current = currentY.current = e.touches[0].clientY;
-            isDragging.current = true;
-            drawer.style.transition = "none";
-        };
-        const onTouchMove = (e) => {
-            if (!isDragging.current) return;
-            currentY.current = e.touches[0].clientY;
-            const diff = Math.max(0, currentY.current - startY.current);
-            if (diff > 0) {
-                e.preventDefault();
-                if (animFrameId.current) cancelAnimationFrame(animFrameId.current);
-                animFrameId.current = requestAnimationFrame(() => {
-                    if (drawer) drawer.style.transform = `translateY(${diff}px)`;
-                });
-            }
-        };
-        const onTouchEnd = () => {
-            if (!isDragging.current) return;
+            if (!isOpenRef.current) return; // ✅ ref use karo
+            // Scrollable content ke andar vertical scroll allow karo
+            const target = e.target;
+            const scrollable = target.closest("[data-swipe-ignore]");
+            if (scrollable) return;
+
+            startY.current   = e.touches[0].clientY;
+            startX.current   = e.touches[0].clientX;
+            currentY.current = startY.current;
             isDragging.current = false;
+            isLocked.current   = false;
+        };
+
+        const onTouchMove = (e) => {
+            if (!isOpenRef.current) return;
+            if (startY.current === null) return;
+
+            const dy = e.touches[0].clientY - startY.current;
+            const dx = Math.abs(e.touches[0].clientX - startX.current);
+
+            // Pehle move pe decide karo: horizontal ya vertical
+            if (!isDragging.current && !isLocked.current) {
+                if (Math.abs(dy) < 5 && dx < 5) return; // abhi decide nahi hua
+                if (dx > Math.abs(dy)) {
+                    isLocked.current = true; // horizontal — ignore
+                    return;
+                }
+                if (dy < 0) { isLocked.current = true; return; } // upar scroll — ignore
+                isDragging.current = true; // ✅ sirf neeche drag pe activate
+                drawer.style.transition = "none";
+            }
+
+            if (isLocked.current || !isDragging.current) return;
+
+            currentY.current = e.touches[0].clientY;
+            const diff = Math.max(0, dy);
+            e.preventDefault(); // scroll rok do
+            if (animFrameId.current) cancelAnimationFrame(animFrameId.current);
+            animFrameId.current = requestAnimationFrame(() => {
+                if (drawer) drawer.style.transform = `translateY(${diff}px)`;
+            });
+        };
+
+        const onTouchEnd = () => {
+            if (!isDragging.current) {
+                startY.current = null;
+                return;
+            }
+            isDragging.current = false;
+            isLocked.current   = false;
             const diff = Math.max(0, (currentY.current ?? 0) - (startY.current ?? 0));
-            drawer.style.transition = "";
-            drawer.style.transform  = "";
-            if (diff > threshold) onCloseRef.current();
+
+            // ✅ Smooth snap back ya close
+            drawer.style.transition = "transform 0.3s cubic-bezier(0.32,0.72,0,1)";
+            if (diff > threshold) {
+                // Threshold cross — close karo
+                drawer.style.transform = "translateY(100%)";
+                setTimeout(() => {
+                    drawer.style.transform = "";
+                    drawer.style.transition = "";
+                    onCloseRef.current();
+                }, 280);
+            } else {
+                // Snap back
+                drawer.style.transform = "";
+                setTimeout(() => { drawer.style.transition = ""; }, 320);
+            }
             startY.current = currentY.current = null;
         };
 
-        handle.addEventListener("touchstart", onTouchStart, { passive: true });
-        handle.addEventListener("touchmove",  onTouchMove,  { passive: false });
-        handle.addEventListener("touchend",   onTouchEnd,   { passive: true });
+        // ✅ Poore drawer pe attach karo — sirf handle pe nahi
+        drawer.addEventListener("touchstart", onTouchStart, { passive: true });
+        drawer.addEventListener("touchmove",  onTouchMove,  { passive: false });
+        drawer.addEventListener("touchend",   onTouchEnd,   { passive: true });
+
         return () => {
-            handle.removeEventListener("touchstart", onTouchStart);
-            handle.removeEventListener("touchmove",  onTouchMove);
-            handle.removeEventListener("touchend",   onTouchEnd);
+            drawer.removeEventListener("touchstart", onTouchStart);
+            drawer.removeEventListener("touchmove",  onTouchMove);
+            drawer.removeEventListener("touchend",   onTouchEnd);
             if (animFrameId.current) cancelAnimationFrame(animFrameId.current);
             if (drawer) { drawer.style.transform = ""; drawer.style.transition = ""; }
         };
-        // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [threshold]);
+    }, [threshold]); // ✅ isOpen dependency nahi — ref se handle hota hai
 
     return { drawerRef, handleRef };
 }
@@ -195,11 +234,10 @@ function useSwipeToClose({ onClose, isOpen, threshold = 80 }) {
    LIMIT UI COMPONENTS
 ══════════════════════════════════════════════════════════════════════════ */
 
-/* Desktop topbar — compact pill */
-function DesktopLimitBadge({ used, total }) {
+/* ✅ getCVResetTime prop add kiya */
+function DesktopLimitBadge({ used, total, getResetTime }) {
     const remaining = Math.max(0, total - used);
     const isLimit   = remaining === 0;
-    const pct       = (used / total) * 100;
     const barColor  = isLimit ? "#ef4444" : used === total - 1 ? "#f59e0b" : "#10b981";
 
     return (
@@ -207,15 +245,10 @@ function DesktopLimitBadge({ used, total }) {
             "hidden sm:flex items-center gap-2 px-2.5 py-1.5 rounded-lg border text-[10px] transition-all",
             isLimit ? "bg-red-50 border-red-200" : "bg-[var(--surface-100)] border-[var(--surface-200)]"
         )}>
-            {/* Download icon */}
             <FaDownload className={cn("text-[9px]", isLimit ? "text-red-500" : "text-[var(--surface-400)]")} />
-
-            {/* Label */}
             <span className={cn("font-semibold", isLimit ? "text-red-600" : "text-[var(--surface-600)]")}>
                 PDF
             </span>
-
-            {/* Pips */}
             <div className="flex items-center gap-[3px]">
                 {Array.from({ length: total }).map((_, i) => (
                     <div key={i} className={cn(
@@ -224,23 +257,19 @@ function DesktopLimitBadge({ used, total }) {
                     )} style={i >= used ? { background: barColor } : {}} />
                 ))}
             </div>
-
-            {/* Count + reset info */}
             <span className={cn("font-bold", isLimit ? "text-red-600" : "text-[var(--surface-700)]")}>
                 {used}/{total}
             </span>
-            <span className={cn(
-                "hidden lg:inline",
-                isLimit ? "text-red-400" : "text-[var(--surface-400)]"
-            )}>
-                · {isLimit ? `resets in ${getMidnightTime()}` : "resets in 24h"}
+            {/* ✅ getResetTime() use karo */}
+            <span className={cn("hidden lg:inline", isLimit ? "text-red-400" : "text-[var(--surface-400)]")}>
+                · {isLimit ? `resets in ${getResetTime?.() || "24h"}` : "resets in 24h"}
             </span>
         </div>
     );
 }
 
-/* Mobile — thin strip below toolbar */
-function MobileLimitStrip({ used, total }) {
+/* ✅ getCVResetTime prop add kiya */
+function MobileLimitStrip({ used, total, getResetTime }) {
     const remaining = Math.max(0, total - used);
     const isLimit   = remaining === 0;
     const barColor  = isLimit ? "#ef4444" : used === total - 1 ? "#f59e0b" : "#10b981";
@@ -250,7 +279,6 @@ function MobileLimitStrip({ used, total }) {
             "lg:hidden flex items-center justify-between px-4 py-1.5 border-b text-[11px]",
             isLimit ? "bg-red-50 border-red-200" : "bg-[var(--surface-100)] border-[var(--surface-200)]"
         )}>
-            {/* Left: pips + label */}
             <div className="flex items-center gap-2">
                 <FaDownload className={cn("text-[9px]", isLimit ? "text-red-500" : "text-[var(--surface-400)]")} />
                 <div className="flex items-center gap-[3px]">
@@ -265,10 +293,9 @@ function MobileLimitStrip({ used, total }) {
                     {used}/{total} PDF downloads today
                 </span>
             </div>
-
-            {/* Right: reset info */}
+            {/* ✅ getResetTime() use karo */}
             <span className={cn("font-medium", isLimit ? "text-red-500" : "text-[var(--surface-400)]")}>
-                {isLimit ? `resets in ${getMidnightTime()}` : "resets in 24h"}
+                {isLimit ? `resets in ${getResetTime?.() || "24h"}` : "resets in 24h"}
             </span>
         </div>
     );
@@ -281,7 +308,9 @@ function EditorPage() {
     const navigate = useNavigate();
     const { user }   = useAuth();
     const { saveCV } = useCVDatabase();
-    const { canBuildCV, remainingCV, dailyCVLimit, usage, incrementCV } = useUserLimits();
+
+    // ✅ getCVResetTime add kiya
+    const { canBuildCV, remainingCV, dailyCVLimit, usage, incrementCV, getCVResetTime } = useUserLimits();
 
     const {
         cvData, dispatch, darkMode, setDarkMode,
@@ -327,7 +356,7 @@ function EditorPage() {
         return [clean(firstName), clean(lastName), clean(title), "CV"].filter(Boolean).join("_");
     }, [cvData.personal]);
 
-    /* ── Save (local only — no daily limit) ── */
+    /* ── Save ── */
     const handleSave = useCallback(async () => {
         if (!user) { showToast("Please login to save.", "error"); return; }
         const autoName = generateCVName();
@@ -338,11 +367,11 @@ function EditorPage() {
         showToast("CV saved!", "success");
     }, [user, generateCVName, dispatch, saveCV, cvData, saveVersion, showToast]);
 
-    /* ── Export PDF (3/day limit) ── */
+    /* ── Export PDF — ✅ getCVResetTime() use karo ── */
     const handleExport = useCallback(async () => {
         if (!user) { showToast("Please login to export.", "error"); return; }
         if (!canBuildCV) {
-            showToast(`PDF limit reached (${dailyCVLimit}/day). Resets in ${getMidnightTime()}.`, "error");
+            showToast(`PDF limit reached (${dailyCVLimit}/day). Resets in ${getCVResetTime() || "24h"}.`, "error");
             return;
         }
         if (isExporting) return;
@@ -358,7 +387,7 @@ function EditorPage() {
             });
             const ok = await exportCVToPDF(null, autoName, cvHTML);
             if (ok) {
-                await incrementCV();       // increment PDF download count
+                await incrementCV();
                 saveVersion(autoName);
             }
             showToast(ok ? "PDF exported!" : "Export failed.", ok ? "success" : "error");
@@ -366,7 +395,7 @@ function EditorPage() {
             console.error(err);
             showToast("Export failed.", "error");
         } finally { setIsExporting(false); }
-    }, [user, canBuildCV, dailyCVLimit, isExporting, generateCVName, dispatch, cvData, exportCVToPDF, incrementCV, saveVersion, showToast]);
+    }, [user, canBuildCV, dailyCVLimit, getCVResetTime, isExporting, generateCVName, dispatch, cvData, incrementCV, saveVersion, showToast]);
 
     // Preview scale
     useEffect(() => {
@@ -480,11 +509,12 @@ function EditorPage() {
                                 : "Untitled CV"}
                         </span>
 
-                        {/* Desktop limit badge */}
+                        {/* ✅ getResetTime prop pass karo */}
                         {user && (
                             <DesktopLimitBadge
                                 used={usage.cv_builds || 0}
                                 total={dailyCVLimit}
+                                getResetTime={getCVResetTime}
                             />
                         )}
                     </div>
@@ -528,11 +558,12 @@ function EditorPage() {
                 </div>
             )}
 
-            {/* ════ MOBILE LIMIT STRIP ════════════════════════════════ */}
+            {/* ════ MOBILE LIMIT STRIP — ✅ getResetTime pass karo ════ */}
             {!fullPreview && user && (
                 <MobileLimitStrip
                     used={usage.cv_builds || 0}
                     total={dailyCVLimit}
+                    getResetTime={getCVResetTime}
                 />
             )}
 
@@ -688,7 +719,7 @@ function EditorPage() {
                     </div>
                 </div>
 
-                {/* PDF limit info in drawer */}
+                {/* PDF limit info in drawer — ✅ getCVResetTime() use karo */}
                 {user && (
                     <div className={cn(
                         "mx-4 mt-4 mb-2 rounded-xl border overflow-hidden",
@@ -709,7 +740,6 @@ function EditorPage() {
                                     {usage.cv_builds || 0}/{dailyCVLimit} today
                                 </span>
                             </div>
-                            {/* Progress bar */}
                             <div className="flex gap-1 mb-1.5">
                                 {Array.from({ length: dailyCVLimit }).map((_, i) => (
                                     <div key={i} className={cn(
@@ -720,9 +750,10 @@ function EditorPage() {
                                     )} />
                                 ))}
                             </div>
+                            {/* ✅ getCVResetTime() use karo */}
                             <p className={cn("text-[10px]", (usage.cv_builds || 0) >= dailyCVLimit ? "text-red-600 font-semibold" : "text-[var(--surface-400)]")}>
                                 {(usage.cv_builds || 0) >= dailyCVLimit
-                                    ? `⚠ Limit reached — resets in ${getMidnightTime()}`
+                                    ? `⚠ Limit reached — resets in ${getCVResetTime() || "24h"}`
                                     : `${remainingCV} download${remainingCV !== 1 ? "s" : ""} left · resets in 24h`}
                             </p>
                         </div>
@@ -745,8 +776,8 @@ function EditorPage() {
                     </div>
                 )}
 
-                {/* Version list */}
-                <div className="flex-1 overflow-y-auto px-4 pb-6 space-y-2 min-h-0">
+                {/* Version list — ✅ data-swipe-ignore: andar scroll kaam kare */}
+                <div data-swipe-ignore className="flex-1 overflow-y-auto px-4 pb-6 space-y-2 min-h-0">
                     {manualSaves.length === 0 ? (
                         <div className="flex flex-col items-center justify-center h-full gap-4 py-16">
                             <div className="w-20 h-20 rounded-2xl bg-[var(--surface-100)] border-2 border-dashed border-[var(--surface-300)] flex items-center justify-center">

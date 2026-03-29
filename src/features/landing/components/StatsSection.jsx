@@ -55,9 +55,7 @@ function StatsSection() {
       ref={sectionRef}
       id="stats-section"
       className="
-        py-15
-        bg-[var(--brand-400)]
-        dark:bg-[var(--surface-100)]
+        py-15 bg-[var(--surface-100)]
         border-y border-[var(--surface-200)]
       "
     >

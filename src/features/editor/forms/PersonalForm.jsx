@@ -20,7 +20,7 @@ function StatusPill({ filled, total }) {
       done
         ? "bg-emerald-100 text-emerald-600"
         : filled > 0
-        ? "bg-[var(--brand-100,#dbeafe)] text-[var(--brand-600)]"
+        ? "bg-[var(--brand-400)]/30 text-[var(--brand-700)]"
         : "bg-[var(--surface-100)] text-[var(--surface-400)]",
     ].join(" ")}>
       {done ? "✓ Complete" : `${filled} / ${total}`}
