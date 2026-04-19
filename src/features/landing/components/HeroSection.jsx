@@ -21,7 +21,7 @@ function HeroSection({ navigate }) {
     { label: 'React.js', pct: 75 },
     { label: 'Git & GitHub', pct: 70 },
   ];
-  
+
   return (
     <section className="relative min-h-screen flex items-center bg-[var(--surface-50)] overflow-hidden">
 
@@ -78,7 +78,7 @@ function HeroSection({ navigate }) {
             </p>
 
             {/* CTAs */}
-            <div style={anim(0.3)} className="grid grid-cols-2 gap-3 w-full mb-10">
+            <div style={anim(0.3)} className="grid grid-cols-1 md:grid-cols-2 gap-3 w-full mb-10">
               <button
                 onClick={() => navigate('/templates')}
                 className="group relative flex items-center justify-center gap-2 w-full px-5 py-[14px] rounded-xl text-sm font-bold overflow-hidden transition-all duration-200"
