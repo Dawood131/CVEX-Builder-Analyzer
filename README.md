@@ -4,7 +4,7 @@
 
 # CVEX — CV Builder & AI Analyzer
 
-**Create professional CVs that get you hired.**
+**Create and analyze professional CVs that get you hired.**
 
 [![Live Demo](https://img.shields.io/badge/Live%20Demo-cvex--builder--analyzer.vercel.app-6366f1?style=for-the-badge&logo=vercel)](https://cvex-builder-analyzer.vercel.app/)
 [![React](https://img.shields.io/badge/React-18-61DAFB?style=for-the-badge&logo=react)](https://react.dev/)
@@ -28,7 +28,7 @@ CVEX is a full-stack SaaS CV builder and AI-powered resume analyzer. Users can c
 - **Design Panel** — Custom colors, fonts, layouts (single column / sidebar), photo options
 - **AI Analyzer** — ATS score, keyword match, skills gap radar, section-by-section analysis
 - **PDF Export** — High-fidelity PDF export with daily usage limits
-- **CV History** — Save, restore, and delete CV versions (Supabase-backed)
+- **CV History** — Save, restore, and delete CV versions
 - **Auth System** — Email/password + Google OAuth, email verification, password reset
 - **Dark Mode** — Full dark/light mode support
 - **Responsive** — Mobile-first design with swipe gestures and bottom navigation
@@ -43,9 +43,8 @@ CVEX is a full-stack SaaS CV builder and AI-powered resume analyzer. Users can c
 | Frontend | React 18, Vite, Tailwind CSS |
 | Backend / DB | Supabase (PostgreSQL, Auth, RLS) |
 | Auth | Supabase Auth — Email + Google OAuth |
-| PDF Export | Puppeteer / html2pdf |
-| AI Analysis | Claude API (Anthropic) |
-| Analytics | Google Analytics 4 (react-ga4) |
+| AI Analysis | Gemini API |
+| Analytics | Google Analytics 4 |
 | Hosting | Vercel |
 
 ---
@@ -98,10 +97,10 @@ src/
 │   │
 │   ├── editor/
 │   │   ├── components/
-│   │   │   ├── DesignPanel.jsx      # Colors, fonts, layout controls
-│   │   │   ├── MultiEntryForm.jsx   # Reusable multi-entry list form
+│   │   │   ├── DesignPanel.jsx       # Colors, fonts, layout controls
+│   │   │   ├── MultiEntryForm.jsx    # Reusable multi-entry list form
 │   │   │   └── SectionFormRouter.jsx # Routes to correct section form
-│   │   ├── forms/                   # One form per CV section
+│   │   ├── forms/
 │   │   │   ├── PersonalForm.jsx
 │   │   │   ├── SummaryForm.jsx
 │   │   │   ├── ExperienceForm.jsx
@@ -114,13 +113,13 @@ src/
 │   │   │   ├── HobbiesForm.jsx
 │   │   │   └── ReferencesForm.jsx
 │   │   ├── pages/
-│   │   │   └── EditorPage.jsx       # Main editor — sidebar + preview
+│   │   │   └── EditorPage.jsx        # Main editor — sidebar + preview
 │   │   ├── preview/
-│   │   │   └── CVRenderer.jsx       # Live CV preview + HTML for PDF
-│   │   └── exportPdf.js             # PDF generation logic
+│   │   │   └── CVRenderer.jsx        # Live CV preview + HTML for PDF
+│   │   └── exportPdf.js              # PDF generation logic
 │   │
 │   ├── landing/
-│   │   ├── components/              # Landing page sections
+│   │   ├── components/
 │   │   │   ├── HeroSection.jsx
 │   │   │   ├── FeatureSection.jsx
 │   │   │   ├── AIAnalyzerSection.jsx
@@ -134,183 +133,44 @@ src/
 │   │
 │   └── template/
 │       ├── components/
-│       │   ├── TemplateCard.jsx     # Single template preview card
-│       │   └── TemplateSection.jsx  # Template gallery grid
+│       │   ├── TemplateCard.jsx      # Single template preview card
+│       │   └── TemplateSection.jsx   # Template gallery grid
 │       └── pages/
-│           └── Templatepage.jsx     # Template selection page
+│           └── Templatepage.jsx
 │
 ├── hooks/
-│   └── useScrollReveal.js           # Scroll animation hook
+│   └── useScrollReveal.js            # Scroll animation hook
 │
 ├── lib/
-│   └── supabaseClient.js            # Supabase client init
+│   └── supabaseClient.js             # Supabase client init
 │
 ├── shared/
 │   ├── guards/
-│   │   └── ProtectedRoute.jsx       # Auth-gated route wrapper
+│   │   └── ProtectedRoute.jsx        # Auth-gated route wrapper
 │   ├── layout/
 │   │   ├── Footer.jsx
-│   │   └── Navbar.jsx               # Main navbar with auth, dark mode
+│   │   └── Navbar.jsx
 │   ├── pages/
 │   │   ├── NotFound.jsx
 │   │   ├── PrivacyPolicy.jsx
 │   │   └── ServicePolicy.jsx
 │   └── ui/
-│       └── UIComponents.jsx         # Button, Toggle, shared UI
+│       └── UIComponents.jsx
 │
 ├── utils/
-│   ├── cvSession.js                 # Fresh template session flag
-│   └── helper.js                   # cn(), utility functions
+│   ├── cvSession.js
+│   └── helper.js
 │
-├── index.css                        # Global styles, CSS variables
-└── main.jsx                         # App entry, GA4 init, AuthProvider
+├── index.css
+└── main.jsx
 ```
-
----
-
-## Getting Started
-
-### Prerequisites
-
-- Node.js 18+
-- npm or yarn
-- Supabase account
-- Anthropic API key (for AI Analyzer)
-
-### Installation
-
-```bash
-# Clone the repo
-git clone https://github.com/yourusername/cvex.git
-cd cvex
-
-# Install dependencies
-npm install
-
-# Setup environment variables
-cp .env.example .env.local
-```
-
-```
-
-### Supabase Setup
-
-Run these SQL queries in your Supabase SQL Editor:
-
-```sql
--- Profiles table
-CREATE TABLE IF NOT EXISTS public.profiles (
-  id          UUID PRIMARY KEY REFERENCES auth.users(id) ON DELETE CASCADE,
-  full_name   TEXT,
-  avatar_url  TEXT,
-  created_at  TIMESTAMPTZ NOT NULL DEFAULT NOW()
-);
-
--- CVs table
-CREATE TABLE IF NOT EXISTS public.cvs (
-  id          UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  user_id     UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
-  name        TEXT NOT NULL DEFAULT 'Untitled CV',
-  cv_data     JSONB NOT NULL DEFAULT '{}',
-  created_at  TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-  updated_at  TIMESTAMPTZ NOT NULL DEFAULT NOW()
-);
-
--- User usage table
-CREATE TABLE IF NOT EXISTS public.user_usage (
-  id                    UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  user_id               UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
-  cv_builds             INT NOT NULL DEFAULT 0,
-  analyses              INT NOT NULL DEFAULT 0,
-  cv_window_start       TIMESTAMPTZ,
-  analysis_window_start TIMESTAMPTZ,
-  UNIQUE(user_id)
-);
-
--- Analysis reports table
-CREATE TABLE IF NOT EXISTS public.analysis_reports (
-  id            UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  user_id       UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
-  cv_name       TEXT,
-  overall_score INT,
-  grade         TEXT,
-  industry      TEXT,
-  report_data   JSONB NOT NULL DEFAULT '{}',
-  analyzed_at   TIMESTAMPTZ NOT NULL DEFAULT NOW()
-);
-
--- Auto-create profile on signup (handles Google OAuth too)
-CREATE OR REPLACE FUNCTION public.handle_new_user()
-RETURNS TRIGGER AS $$
-BEGIN
-  INSERT INTO public.profiles (id, full_name, avatar_url)
-  VALUES (
-    NEW.id,
-    COALESCE(NEW.raw_user_meta_data->>'full_name', NEW.raw_user_meta_data->>'name'),
-    NEW.raw_user_meta_data->>'avatar_url'
-  )
-  ON CONFLICT (id) DO UPDATE SET
-    full_name = COALESCE(EXCLUDED.full_name, public.profiles.full_name);
-  RETURN NEW;
-END;
-$$ LANGUAGE plpgsql SECURITY DEFINER;
-
-CREATE TRIGGER trg_on_auth_user_created
-  AFTER INSERT ON auth.users
-  FOR EACH ROW EXECUTE FUNCTION public.handle_new_user();
-```
-
-### Run Locally
-
-```bash
-npm run dev
-```
-
-App will be running at `http://localhost:5173`
-
----
-
-## Key Design Decisions
-
-**localStorage as cache, Supabase as source of truth** — On load, localStorage gives instant render (no blank flash), then Supabase overwrites with fresh data. Per-user keys (`cvex_cvData_{userId}`) prevent data leaking between accounts.
-
-**Autosave vs manual save** — Autosave only UPDATEs the latest row (no history bloat). Manual save and PDF export INSERT new history rows. New templates are never auto-saved to DB until user explicitly saves.
-
-**Undo/Redo** — In-memory history stack (max 50 snapshots) using `useRef` — no performance overhead.
-
-**Rate limiting** — Per-user daily limits stored in `user_usage` table with rolling window reset.
-
----
-
-## Pages & Routes
-
-| Route | Page | Auth Required |
-|---|---|---|
-| `/` | Landing Page | No |
-| `/templates` | Template Gallery | No |
-| `/editor` | CV Editor | Yes |
-| `/analyzer` | AI Analyzer | Yes |
-| `/auth/login` | Login | No |
-| `/auth/signup` | Signup | No |
-| `/auth/forgot-password` | Forgot Password | No |
-| `/auth/reset-password` | Reset Password | No |
-| `/auth/verify` | Email Verification | No |
-| `/auth/callback` | OAuth Callback | No |
-| `/privacy` | Privacy Policy | No |
-| `/terms` | Terms of Service | No |
-
----
-
-## License
-
-MIT License — feel free to use, modify, and distribute.
 
 ---
 
 <div align="center">
 
-Made with ❤️ by the CVEX team
+Developed by [Dawood Butt](https://github.com/Dawood131)
 
-[Live Demo](https://cvex-builder-analyzer.vercel.app/) · [Report Bug](https://github.com/yourusername/cvex/issues) · [Request Feature](https://github.com/yourusername/cvex/issues)
+[Live Demo](https://cvex-builder-analyzer.vercel.app/)
 
 </div>
