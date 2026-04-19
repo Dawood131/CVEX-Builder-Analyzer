@@ -279,7 +279,7 @@ function EditorPage() {
     const [fullPreview, setFullPreview] = useState(false);
     const [previewScale, setPreviewScale] = useState(() => {
         if (window.innerWidth < 768) {
-            return Math.min(0.45, (window.innerWidth - 32) / 794);
+            return (window.innerWidth - 32) / 794;
         }
         return 1;
     });
@@ -316,14 +316,14 @@ function EditorPage() {
                 localStorage.setItem(localKey, JSON.stringify(result.cvData));
             }
         });
-    }, [user?.id]); 
+    }, [user?.id]);
 
     useEffect(() => {
         if (!user) {
             cvLoadedRef.current = false;
             isNewCVRef.current = false;
         }
-    }, [user?.id]); 
+    }, [user?.id]);
 
     useEffect(() => {
         if (!user || !cvLoadedRef.current) return;
@@ -336,7 +336,7 @@ function EditorPage() {
             .filter(Boolean).join("_") || "Untitled_CV";
 
         autosave(cvData, name, isNewCVRef.current);
-    }, [cvData]); 
+    }, [cvData]);
 
     const closeHistory = useCallback(() => setHistoryOpen(false), []);
     const { drawerRef: historyDrawerRef, handleRef: historyHandleRef } = useSwipeToClose({
@@ -427,11 +427,9 @@ function EditorPage() {
 
     useEffect(() => {
         const update = () => {
-            if (!previewContentRef.current || !previewWrapperRef.current) return;
             if (window.innerWidth < 768) {
-                const w = previewWrapperRef.current.offsetWidth;
-                const h = previewWrapperRef.current.offsetHeight;
-                setPreviewScale(Math.max(0.35, Math.min(Math.min(w / 794, h / 1123), 0.45)));
+                const w = window.innerWidth - 32;
+                setPreviewScale(w / 794);
             }
         };
         update();
