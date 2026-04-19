@@ -135,7 +135,7 @@ function HobbiesForm() {
                   "flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold border-2 transition-all",
                   added
                     ? "border-[var(--brand-400)] bg-[var(--brand-50,#eff6ff)] text-[var(--surface-700)] cursor-default"
-                    : "border-[var(--surface-200)] bg-white text-gray-500 hover:border-[var(--brand-400)] hover:text-[var(--brand-600)]",
+                    : "border-[var(--surface-200)] bg-[var(--surface-50)] text-[var(--surface-500)] hover:border-[var(--brand-400)] hover:text-[var(--brand-600)]",
                 ].join(" ")}
               >
                 {added

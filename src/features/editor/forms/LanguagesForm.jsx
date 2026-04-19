@@ -176,7 +176,7 @@ function LanguagesForm() {
                           ? "border-[var(--surface-200)] text-[var(--surface-400)] cursor-default opacity-50"
                           : selected
                           ? "border-[var(--brand-500)] bg-[var(--brand-50,#eff6ff)] text-[var(--brand-600)]"
-                          : "border-[var(--surface-200)] bg-white text-[var(--surface-600)] hover:border-[var(--brand-300)] hover:text-[var(--brand-600)]",
+                          : "border-[var(--surface-200)] bg-[var(--surface-50)] text-[var(--surface-600)] hover:border-[var(--brand-300)] hover:text-[var(--brand-600)]",
                       ].join(" ")}
                     >
                       {selected && <FaCheck className="inline text-[9px] mr-1" />}

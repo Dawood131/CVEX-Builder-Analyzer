@@ -188,7 +188,7 @@ function SkillsForm() {
                   className={[
                     "flex-1 py-1.5 text-xs font-semibold rounded-lg transition-all",
                     activeTab === t.id
-                      ? "bg-white text-[var(--brand-600)] shadow-sm"
+                      ? "bg-[var(--surface-50)] text-[var(--brand-600)] shadow-sm "
                       : "text-[var(--surface-500)] hover:text-[var(--surface-700)]",
                   ].join(" ")}
                 >
@@ -259,7 +259,7 @@ function SkillsForm() {
                           ? "border-[var(--brand-400)] bg-[var(--brand-50,#eff6ff)] text-[var(--brand-500)] cursor-default"
                           : isPending
                           ? "border-[var(--brand-500)] bg-[var(--brand-500)] text-white"
-                          : "border-[var(--surface-200)] bg-white text-[var(--surface-500)] hover:border-[var(--brand-400)] hover:text-[var(--brand-600)] cursor-pointer",
+                          : "border-[var(--surface-200)] bg-[var(--surface-50)] text-[var(--surface-500)] hover:border-[var(--brand-400)] hover:text-[var(--brand-600)] cursor-pointer",
                       ].join(" ")}
                     >
                       {added && <FaCheck className="text-[9px] text-[var(--brand-500)]" />}
@@ -289,7 +289,7 @@ function SkillsForm() {
                         className={[
                           "px-3 py-1.5 rounded-lg text-xs font-semibold border-2 transition-all",
                           pendingSkill.level === l.value
-                            ? "border-[var(--brand-500)] bg-white text-[var(--brand-600)] shadow-sm"
+                            ? "border-[var(--brand-500)] bg-[var(--surface-50)] text-[var(--brand-600)] shadow-sm"
                             : "border-transparent bg-white/60 text-[var(--surface-600)] hover:bg-white  cursor-pointer",
                         ].join(" ")}
                       >
