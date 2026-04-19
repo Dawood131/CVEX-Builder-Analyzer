@@ -1,21 +1,22 @@
 // src/features/auth/pages/ResetPasswordPage.jsx
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../../../context/AuthContext";
 import AuthLayout from "../components/AuthLayout";
 import PasswordStrength from "../components/PasswordStrength";
 import { cn } from "../../../utils/helper";
+import { supabase } from "../../../lib/supabaseClient";
 
 function EyeIcon({ open }) {
   return open ? (
     <svg width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
-      <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/>
-      <circle cx="12" cy="12" r="3"/>
+      <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" />
+      <circle cx="12" cy="12" r="3" />
     </svg>
   ) : (
     <svg width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
-      <path d="M17.94 17.94A10.07 10.07 0 0112 20c-7 0-11-8-11-8a18.45 18.45 0 015.06-5.94M9.9 4.24A9.12 9.12 0 0112 4c7 0 11 8 11 8a18.5 18.5 0 01-2.16 3.19m-6.72-1.07a3 3 0 11-4.24-4.24"/>
-      <line x1="1" y1="1" x2="23" y2="23"/>
+      <path d="M17.94 17.94A10.07 10.07 0 0112 20c-7 0-11-8-11-8a18.45 18.45 0 015.06-5.94M9.9 4.24A9.12 9.12 0 0112 4c7 0 11 8 11 8a18.5 18.5 0 01-2.16 3.19m-6.72-1.07a3 3 0 11-4.24-4.24" />
+      <line x1="1" y1="1" x2="23" y2="23" />
     </svg>
   );
 }
@@ -23,8 +24,8 @@ function EyeIcon({ open }) {
 function Spinner() {
   return (
     <svg className="animate-spin w-4 h-4" fill="none" viewBox="0 0 24 24">
-      <circle cx="12" cy="12" r="10" stroke="white" strokeWidth="3" opacity="0.25"/>
-      <path fill="white" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/>
+      <circle cx="12" cy="12" r="10" stroke="white" strokeWidth="3" opacity="0.25" />
+      <path fill="white" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
     </svg>
   );
 }
@@ -34,19 +35,23 @@ export default function ResetPasswordPage() {
   const { resetPassword, authError, clearError } = useAuth();
 
   const [password, setPassword] = useState("");
-  const [confirm,  setConfirm]  = useState("");
+  const [confirm, setConfirm] = useState("");
   const [showPass, setShowPass] = useState(false);
   const [showConf, setShowConf] = useState(false);
-  const [loading,  setLoading]  = useState(false);
-  const [errors,   setErrors]   = useState({});
-  const [done,     setDone]     = useState(false);
-
+  const [loading, setLoading] = useState(false);
+  const [errors, setErrors] = useState({});
+  const [done, setDone] = useState(false);
+  useEffect(() => {
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      console.log("Reset page session email:", session?.user?.email);
+    });
+  }, []);
   const handleSubmit = async (ev) => {
     ev.preventDefault();
     clearError();
     const e = {};
     if (!password || password.length < 8) e.password = "Min 8 characters";
-    if (confirm !== password)             e.confirm  = "Passwords don't match";
+    if (confirm !== password) e.confirm = "Passwords don't match";
     if (Object.keys(e).length) { setErrors(e); return; }
     setErrors({});
     setLoading(true);
@@ -54,7 +59,8 @@ export default function ResetPasswordPage() {
     setLoading(false);
     if (!error) {
       setDone(true);
-      setTimeout(() => navigate("/auth/login"), 2500);
+      await supabase.auth.signOut(); 
+      setTimeout(() => navigate("/auth/login", { replace: true }), 2500);
     }
   };
 
@@ -65,7 +71,7 @@ export default function ResetPasswordPage() {
         <div className="flex justify-center py-6">
           <div className="w-14 h-14 rounded-2xl bg-emerald-100 border border-emerald-300 flex items-center justify-center">
             <svg width="26" height="26" fill="none" stroke="#16a34a" strokeWidth="2" viewBox="0 0 24 24">
-              <path d="M5 13l4 4L19 7" strokeLinecap="round" strokeLinejoin="round"/>
+              <path d="M5 13l4 4L19 7" strokeLinecap="round" strokeLinejoin="round" />
             </svg>
           </div>
         </div>

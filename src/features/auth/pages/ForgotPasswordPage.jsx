@@ -21,7 +21,6 @@ export default function ForgotPasswordPage() {
   const [loading, setLoading] = useState(false);
   const [sent, setSent] = useState(false);
   const [error, setError] = useState("");
-
   const handleSubmit = async (ev) => {
     ev.preventDefault();
     clearError();
@@ -31,11 +30,10 @@ export default function ForgotPasswordPage() {
     }
     setError("");
     setLoading(true);
-    const { error: err } = await forgotPassword(email);
+    await forgotPassword(email); 
     setLoading(false);
-    if (!err) setSent(true);
+    setSent(true);              
   };
-
   useEffect(() => {
     clearError();
   }, []);

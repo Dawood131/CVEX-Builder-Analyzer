@@ -31,12 +31,12 @@ export function ProtectedRoute({ children }) {
 }
 
 export function GuestRoute({ children }) {
-  const { user, loading } = useAuth();
+  const { user, loading, isRecoveryMode } = useAuth();
   const location = useLocation();
 
   if (loading) return <AuthLoader />;
 
-  if (user) {
+  if (user && !isRecoveryMode) {
     const from = location.state?.from?.pathname || "/";
     return <Navigate to={from} replace />;
   }
