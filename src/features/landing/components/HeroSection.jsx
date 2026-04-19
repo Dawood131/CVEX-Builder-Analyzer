@@ -1,10 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { Button } from '../../../shared/ui/UIComponents';
-import {
-  FaArrowRight, FaEye, FaShieldAlt, FaFilePdf,
-  FaUser, FaCheck, FaDownload,
-} from 'react-icons/fa';
-import { HiSparkles } from 'react-icons/hi2';
+import { FaArrowRight, FaEye, FaFilePdf } from 'react-icons/fa';
 
 function HeroSection({ navigate }) {
   const [mounted, setMounted] = useState(false);
@@ -14,141 +9,326 @@ function HeroSection({ navigate }) {
     return () => cancelAnimationFrame(raf);
   }, []);
 
-  const skills = ['JavaScript', 'UI/UX', 'TailwindCSS', 'React', 'Redux'];
-
-  const trustBadges = [
-    [<FaShieldAlt className="text-emerald-500" />, 'ATS Friendly'],
-    [<FaFilePdf className="text-red-500" />, 'PDF Export'],
-    [<HiSparkles className="text-purple-500" />, 'No Design Skills Required'],
-  ];
-
   const anim = (delay = 0) => ({
-    transition: `opacity 0.8s ease ${delay}s, transform 0.9s cubic-bezier(0.16,1,0.3,1) ${delay}s`,
-    opacity:   mounted ? 1 : 0,
-    transform: mounted ? 'translateY(0) scale(1)' : 'translateY(50px) scale(0.96)',
+    transition: `opacity 0.7s ease ${delay}s, transform 0.9s cubic-bezier(0.16,1,0.3,1) ${delay}s`,
+    opacity: mounted ? 1 : 0,
+    transform: mounted ? 'translateY(0)' : 'translateY(28px)',
   });
-
+  const skills = [
+    { label: 'HTML', pct: 90 },
+    { label: 'CSS / Tailwind', pct: 85 },
+    { label: 'JavaScript', pct: 80 },
+    { label: 'React.js', pct: 75 },
+    { label: 'Git & GitHub', pct: 70 },
+  ];
+  
   return (
-    <section className="relative flex items-center overflow-hidden md:pt-1 pt-10 bg-[var(--surface-50)]">
+    <section className="relative min-h-screen flex items-center bg-[var(--surface-50)] overflow-hidden">
 
-      {/* Background */}
-      <div className="absolute inset-0 overflow-hidden pointer-events-none">
-        <div className="absolute -top-40 -right-40 w-[600px] h-[600px] rounded-full bg-[var(--brand-100)]/20 blur-3xl opacity-60" />
-        <div className="absolute -bottom-40 -left-40 w-[500px] h-[500px] rounded-full bg-purple-900/20 blur-3xl opacity-50" />
-        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[800px] h-[800px] rounded-full bg-indigo-950/10 blur-3xl opacity-40" />
-      </div>
+      {/* Grid bg */}
+      <div
+        className="absolute inset-0 pointer-events-none"
+        style={{
+          backgroundImage: `linear-gradient(var(--surface-200) 1px, transparent 1px),
+                            linear-gradient(90deg, var(--surface-200) 1px, transparent 1px)`,
+          backgroundSize: '48px 48px',
+          opacity: 0.4,
+        }}
+      />
 
-      <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-20 lg:py-28">
-        <div className="grid lg:grid-cols-2 gap-12 lg:gap-16 items-center">
+      {/* Glow blobs — theme aware */}
+      <div className="absolute -top-32 -right-32 w-[500px] h-[500px] rounded-full bg-[var(--brand-500)]/10 blur-[100px] pointer-events-none" />
+      <div className="absolute -bottom-32 -left-32 w-[400px] h-[400px] rounded-full bg-purple-500/10 blur-[100px] pointer-events-none" />
 
-          {/* Left Text */}
-          <div className="text-center lg:text-left">
+      <div className="relative w-full max-w-7xl mx-auto px-6 sm:px-8 lg:px-12 py-24">
+        <div className="grid lg:grid-cols-2 gap-16 xl:gap-20 items-center">
 
-            <div style={anim(0.1)} className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full
-              bg-[var(--brand-200)]/20 text-[var(--brand-400)]
-              text-sm font-semibold mb-6">
-              <HiSparkles />
-              Trusted by 1,000+ professionals
+          {/* ── LEFT ── */}
+          <div className="flex flex-col w-full">
+
+            {/* Eyebrow */}
+            <div style={anim(0.05)} className="flex items-center gap-3 mb-8 w-full">
+              <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse shrink-0" />
+              <span className="text-xs font-semibold tracking-[0.12em] uppercase text-[var(--surface-500)]">
+                CV Builder & Analyzer
+              </span>
             </div>
 
-            <h1 style={anim(0.2)} className="text-4xl sm:text-5xl lg:text-6xl font-extrabold text-[var(--surface-800)]">
-              Create & Analyze Your CV
-              <span className="gradient-text block mt-1">That Gets You Hired</span>
+            {/* Headline */}
+            <h1
+              style={anim(0.12)}
+              className="w-full text-5xl sm:text-6xl lg:text-[64px] xl:text-[70px] font-black leading-[1.02] tracking-tight text-[var(--surface-900)] mb-6"
+            >
+              Land Your<br />
+              Dream Job<br />
+              <span
+                style={{
+                  WebkitTextStroke: '2.5px var(--brand-500)',
+                  color: 'transparent',
+                  display: 'inline-block',
+                }}
+              >
+                Faster.
+              </span>
             </h1>
 
-            <p style={anim(0.35)} className="mt-6 text-lg sm:text-xl text-[var(--surface-800)] max-w-xl mx-auto lg:mx-0">
-              Build modern, ATS-friendly resumes in minutes with CVEX, or upload your existing CV to analyze it instantly and get actionable feedback to boost your chances of getting hired.
+            <p style={anim(0.22)} className="w-full text-base sm:text-[17px] text-[var(--surface-500)] leading-[1.7] mb-10">
+              Build ATS-optimized resumes in minutes — or upload your CV
+              and get an instant score with actionable fixes.
             </p>
 
-            <div style={anim(0.5)} className="flex flex-col sm:flex-row gap-4 mt-8 justify-center lg:justify-start">
-              <Button variant="primary" size="xl" className="group" onClick={() => navigate('/templates')}>
-                Create Your CV
-                <FaArrowRight className="transition-transform group-hover:translate-x-1 ml-2" />
-              </Button>
-              <Button onClick={() => navigate('/analyzer')} variant="secondary" size="xl">
-                <FaEye className="mr-2" /> Analyze Your CV
-              </Button>
+            {/* CTAs */}
+            <div style={anim(0.3)} className="grid grid-cols-2 gap-3 w-full mb-10">
+              <button
+                onClick={() => navigate('/templates')}
+                className="group relative flex items-center justify-center gap-2 w-full px-5 py-[14px] rounded-xl text-sm font-bold overflow-hidden transition-all duration-200"
+                style={{
+                  background: 'var(--brand-600)',
+                  color: '#ffffff',
+                }}
+                onMouseEnter={e => e.currentTarget.style.opacity = '0.9'}
+                onMouseLeave={e => e.currentTarget.style.opacity = '1'}
+              >
+                Build my CV
+                <FaArrowRight className="text-xs transition-transform duration-200 group-hover:translate-x-1" />
+              </button>
+              <button
+                onClick={() => navigate('/analyzer')}
+                className="flex items-center justify-center gap-2 w-full px-5 py-[14px] rounded-xl text-sm font-bold transition-all duration-200 text-[var(--surface-700)]"
+                style={{
+                  background: 'var(--surface-100)',
+                  border: '1px solid var(--surface-200)',
+                }}
+                onMouseEnter={e => e.currentTarget.style.background = 'var(--surface-150, var(--surface-200))'}
+                onMouseLeave={e => e.currentTarget.style.background = 'var(--surface-100)'}
+              >
+                <FaEye className="text-xs" />
+                Analyze my CV
+              </button>
             </div>
 
-            <div style={anim(0.65)} className="flex flex-wrap gap-4 mt-8 justify-center lg:justify-start">
-              {trustBadges.map(([icon, txt]) => (
-                <div key={txt} className="flex items-center gap-2 text-sm text-[var(--surface-800)]">
-                  {icon}{txt}
-                </div>
+            {/* Trust */}
+            <div style={anim(0.38)} className="flex items-center justify-between w-full pt-7 border-t border-[var(--surface-200)]">
+              {[
+                { label: 'ATS Friendly' },
+                { label: 'PDF Export' },
+                { label: 'No Design Skills' },
+              ].map(({ label }, i) => (
+                <React.Fragment key={label}>
+                  {i > 0 && <span className="w-px h-5 bg-[var(--surface-200)]" />}
+                  <span className="flex items-center gap-2 text-xs text-[var(--surface-500)] font-medium">
+                    <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
+                      <circle cx="7" cy="7" r="6.5" fill="#dcfce7" />
+                      <polyline points="4,7 6,9.2 10,4.5" stroke="#16a34a" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round" />
+                    </svg>
+                    {label}
+                  </span>
+                </React.Fragment>
               ))}
             </div>
           </div>
 
-          {/* Right Mockup */}
-          <div style={anim(0.3)} className="relative flex justify-center">
-            <div className="relative w-[320px] sm:w-[360px]">
-              <div className="absolute inset-0 rounded-2xl blur-2xl opacity-20 scale-105" />
-              <div className="relative bg-[var(--surface-100)] rounded-2xl shadow-2xl overflow-hidden border border-[var(--surface-100)]">
+          {/* ── RIGHT — CV CARD ── */}
+          <div style={anim(0.18)} className="relative flex justify-center lg:justify-end">
+            <div className="relative w-full max-w-[420px]">
 
-                <div className="h-24 bg-gradient-to-r from-[var(--brand-600)] to-purple-600 flex items-end px-6 pb-3">
-                  <div className="flex items-end gap-3">
-                    <div className="w-14 h-14 rounded-full bg-white/20 border-2 border-white/50 flex items-center justify-center -mb-1">
-                      <FaUser className="text-white/70 text-lg" />
+              {/* Corner deco */}
+              <div
+                className="absolute -top-4 -left-4 w-16 h-16 pointer-events-none"
+                style={{
+                  borderTop: '1.5px solid var(--brand-400)',
+                  borderLeft: '1.5px solid var(--brand-400)',
+                  borderRadius: '10px 0 0 0',
+                  opacity: 0.5,
+                }}
+              />
+              <div
+                className="absolute -bottom-4 -right-4 w-16 h-16 pointer-events-none"
+                style={{
+                  borderBottom: '1.5px solid var(--brand-400)',
+                  borderRight: '1.5px solid var(--brand-400)',
+                  borderRadius: '0 0 10px 0',
+                  opacity: 0.5,
+                }}
+              />
+
+              {/* Card */}
+              <div
+                className="relative rounded-2xl overflow-hidden w-full"
+                style={{
+                  background: 'var(--surface-100)',
+                  border: '1px solid var(--surface-200)',
+                  boxShadow: '0 0 0 1px var(--surface-200), 0 24px 64px -12px rgba(0,0,0,0.2)',
+                }}
+              >
+                {/* Top accent bar */}
+                <div className="h-[3px] w-full" style={{ background: 'linear-gradient(90deg, var(--brand-500), #a855f7, #ec4899)' }} />
+
+                {/* CV Header */}
+                <div
+                  className="px-7 pt-6 pb-5"
+                  style={{ borderBottom: '1px solid var(--surface-200)' }}
+                >
+                  <div className="flex items-start justify-between gap-4">
+                    <div className="flex items-center gap-3">
+                      <div
+                        className="w-11 h-11 rounded-xl flex items-center justify-center shrink-0"
+                        style={{ background: 'linear-gradient(135deg, var(--brand-500), #a855f7)' }}
+                      >
+                        <span className="text-white text-sm font-black">DB</span>
+                      </div>
+                      <div>
+                        <div className="text-sm font-bold text-[var(--surface-900)] tracking-tight">Dawood Butt</div>
+                        <div className="text-[11px] text-[var(--surface-500)] mt-0.5">Frontend Developer</div>
+                        <div className="text-[10px] text-[var(--surface-400)] mt-0.5">Lahore, Pakistan</div>
+                      </div>
                     </div>
-                    <div className="pb-1">
-                      <div className="text-white font-bold text-sm">Dawood Butt</div>
-                      <div className="text-white/70 text-xs">Frontend Developer</div>
+                    {/* ATS Score */}
+                    <div
+                      className="flex flex-col items-center rounded-xl px-3.5 py-2.5 shrink-0"
+                      style={{
+                        background: 'color-mix(in srgb, #16a34a 10%, var(--surface-50))',
+                        border: '1px solid color-mix(in srgb, #16a34a 20%, transparent)',
+                      }}
+                    >
+                      <span className="text-xl font-black text-emerald-500 leading-none">95</span>
+                      <span className="text-[8px] font-bold text-emerald-600 tracking-widest uppercase mt-1">ATS</span>
                     </div>
                   </div>
                 </div>
 
-                <div className="p-6 space-y-4">
+                {/* CV Body */}
+                <div className="px-7 py-5 grid grid-cols-2 gap-6">
+
+                  {/* Experience */}
                   <div>
-                    <div className="text-xs font-bold uppercase tracking-wider text-[var(--brand-600)] mb-2">Experience</div>
-                    <div className="space-y-2">
-                      {[['Lead Developer — Google', '2021 – Present'], ['Senior Developer — Spotify', '2018 – 2021']].map(([t, d]) => (
-                        <div key={t} className="flex items-start gap-2">
-                          <div className="w-1.5 h-1.5 rounded-full bg-[var(--brand-500)] mt-1.5 shrink-0" />
-                          <div>
-                            <div className="text-xs font-semibold text-[var(--surface-800)]">{t}</div>
-                            <div className="text-[10px] text-[var(--surface-800)]">{d}</div>
-                          </div>
+                    <div
+                      className="text-[9px] font-bold tracking-[0.14em] uppercase mb-3 flex items-center gap-1.5"
+                      style={{ color: 'var(--surface-400)' }}
+                    >
+                      <span className="w-3 h-[1.5px] inline-block" style={{ background: 'var(--brand-400)' }} />
+                      Experience
+                    </div>
+                    {[
+                      ['Lead Developer', 'Google', '2021–Now'],
+                      ['Senior Dev', 'Spotify', '2018–21'],
+                      ['Frontend Eng', 'Notion', '2016–18'],
+                    ].map(([role, co, yr]) => (
+                      <div key={role} className="mb-3 last:mb-0">
+                        <div className="text-xs font-semibold text-[var(--surface-800)]">{role}</div>
+                        <div className="text-[10px] text-[var(--surface-400)]">{co} · {yr}</div>
+                      </div>
+                    ))}
+
+                    <div className="mt-5 pt-4" style={{ borderTop: '1px solid var(--surface-200)' }}>
+                      <div
+                        className="text-[9px] font-bold tracking-[0.14em] uppercase mb-2 flex items-center gap-1.5"
+                        style={{ color: 'var(--surface-400)' }}
+                      >
+                        <span className="w-3 h-[1.5px] inline-block" style={{ background: 'var(--brand-400)' }} />
+                        Education
+                      </div>
+                      <div className="text-xs font-semibold text-[var(--surface-800)]">BS Computer Science</div>
+                      <div className="text-[10px] text-[var(--surface-400)]"> University · 2026</div>
+                    </div>
+                  </div>
+
+                  {/* Skills */}
+                  <div>
+                    <div
+                      className="text-[9px] font-bold tracking-[0.14em] uppercase mb-3 flex items-center gap-1.5"
+                      style={{ color: 'var(--surface-400)' }}
+                    >
+                      <span className="w-3 h-[1.5px] inline-block" style={{ background: 'var(--brand-400)' }} />
+                      Skills
+                    </div>
+                    {skills.map(({ label, pct }) => (
+                      <div key={label} className="mb-2.5">
+                        <div className="flex justify-between text-[10px] mb-1">
+                          <span className="text-[var(--surface-500)]">{label}</span>
+                          <span className="font-bold text-[var(--surface-600)]">{pct}%</span>
+                        </div>
+                        <div
+                          className="h-[3px] rounded-full overflow-hidden"
+                          style={{ background: 'var(--surface-200)' }}
+                        >
+                          <div
+                            className="h-[3px] rounded-full"
+                            style={{
+                              width: `${pct}%`,
+                              background: 'linear-gradient(90deg, var(--brand-500), #a855f7)',
+                            }}
+                          />
+                        </div>
+                      </div>
+                    ))}
+
+                    <div className="mt-5 pt-4" style={{ borderTop: '1px solid var(--surface-200)' }}>
+                      <div
+                        className="text-[9px] font-bold tracking-[0.14em] uppercase mb-2 flex items-center gap-1.5"
+                        style={{ color: 'var(--surface-400)' }}
+                      >
+                        <span className="w-3 h-[1.5px] bg-emerald-400 inline-block" />
+                        Analysis
+                      </div>
+                      {['Keywords matched', 'Format clean', 'No parse errors'].map(item => (
+                        <div key={item} className="flex items-center gap-1.5 text-[10px] text-[var(--surface-500)] mb-1.5">
+                          <svg width="10" height="10" viewBox="0 0 10 10" fill="none">
+                            <circle cx="5" cy="5" r="4.5" fill="color-mix(in srgb, #16a34a 15%, transparent)" />
+                            <polyline points="2.8,5 4.2,6.4 7.2,3.2" stroke="#16a34a" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round" />
+                          </svg>
+                          {item}
                         </div>
                       ))}
                     </div>
                   </div>
+                </div>
 
-                  <div>
-                    <div className="text-xs font-bold uppercase tracking-wider text-[var(--brand-600)] mb-2">Skills</div>
-                    <div className="flex flex-wrap gap-1.5">
-                      {skills.map(s => (
-                        <span key={s} className="text-[10px] px-2 py-0.5 rounded-full bg-[var(--brand-400)]/10 text-[var(--brand-500)] font-medium">
-                          {s}
-                        </span>
-                      ))}
-                    </div>
+                {/* Card Footer */}
+                <div
+                  className="px-7 py-3.5 flex items-center justify-between"
+                  style={{
+                    background: 'var(--surface-50)',
+                    borderTop: '1px solid var(--surface-200)',
+                  }}
+                >
+                  <div className="flex items-center gap-1.5 text-[10px] text-[var(--surface-400)]">
+                    <FaFilePdf className="text-red-400" />
+                    PDF export ready
                   </div>
-
-                  <div>
-                    <div className="text-xs font-bold uppercase tracking-wider text-[var(--brand-600)] mb-2">Education</div>
-                    <div className="text-xs font-semibold text-[var(--surface-800)]">M.S. Human-Computer Interaction</div>
-                    <div className="text-[10px] text-[var(--surface-900)]">Stanford University • 2018</div>
-                  </div>
+                  <button
+                    className="text-[10px] font-bold hover:underline"
+                    style={{ color: 'var(--brand-500)' }}
+                  >
+                    Download →
+                  </button>
                 </div>
               </div>
 
-              <div style={anim(0.75)} className="absolute -right-4 top-16 bg-[var(--surface-100)] rounded-xl shadow-lg px-3 py-2 animate-floatDelay border border-[var(--surface-100)]">
-                <div className="flex items-center gap-2">
-                  <div className="w-6 h-6 rounded-full bg-emerald-300/30 flex items-center justify-center">
-                    <FaCheck className="text-emerald-500 text-[10px]" />
-                  </div>
-                  <span className="text-xs font-semibold text-[var(--surface-800)]">ATS Score: 95%</span>
+              {/* Floating stat chip */}
+              <div
+                className="absolute -bottom-5 -right-5 rounded-xl px-4 py-3 flex items-center gap-3"
+                style={{
+                  background: 'var(--surface-100)',
+                  border: '1px solid var(--surface-200)',
+                  boxShadow: '0 8px 24px -4px rgba(0,0,0,0.15)',
+                }}
+              >
+                <div
+                  className="w-8 h-8 rounded-lg flex items-center justify-center shrink-0"
+                  style={{ background: 'color-mix(in srgb, #a855f7 12%, var(--surface-50))' }}
+                >
+                  <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
+                    <path d="M2 10 L5 6 L8 8 L12 3" stroke="#a855f7" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+                    <circle cx="12" cy="3" r="1.5" fill="#a855f7" />
+                  </svg>
+                </div>
+                <div>
+                  <div className="text-xs font-bold text-[var(--surface-800)]">3× more callbacks</div>
+                  <div className="text-[10px] text-[var(--surface-400)]">vs unoptimized CVs</div>
                 </div>
               </div>
 
-              <div style={anim(0.9)} className="absolute -left-4 bottom-20 bg-[var(--surface-100)] rounded-xl shadow-lg px-3 py-2 animate-float border border-[var(--surface-100)]">
-                <div className="flex items-center gap-2">
-                  <div className="w-6 h-6 rounded-full bg-[var(--brand-300)]/30 flex items-center justify-center">
-                    <FaDownload className="text-[var(--brand-500)] text-[10px]" />
-                  </div>
-                  <span className="text-xs font-semibold text-[var(--surface-800)]">PDF Ready</span>
-                </div>
-              </div>
             </div>
           </div>
 

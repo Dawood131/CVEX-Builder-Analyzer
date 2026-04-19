@@ -181,9 +181,9 @@ export default function SignupPage() {
             />
             <span className="text-xs text-[var(--surface-600)] leading-relaxed">
               I agree to the{" "}
-              <Link to="/terms" className="text-[var(--brand-600)] hover:underline font-medium">Terms of Service</Link>
+              <Link to="/servicepolicy" className="text-[var(--brand-600)] hover:underline font-medium">Terms of Service</Link>
               {" "}and{" "}
-              <Link to="/privacy" className="text-[var(--brand-600)] hover:underline font-medium">Privacy Policy</Link>
+              <Link to="/privacypolicy" className="text-[var(--brand-600)] hover:underline font-medium">Privacy Policy</Link>
             </span>
           </label>
           {errors.agreed && <p className="text-[11px] text-red-600 mt-1 ml-6">{errors.agreed}</p>}

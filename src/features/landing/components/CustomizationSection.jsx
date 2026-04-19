@@ -14,7 +14,7 @@ function CustomizationSection() {
     ];
 
     return (
-        <section className="py-20 lg:py-28 bg-[var(--surface-100)] border-y border-[var(--surface-100)]">
+        <section className="py-20 lg:py-28 bg-[var(--surface-50)] border-y border-[var(--surface-100)]">
             <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 grid lg:grid-cols-2 gap-12 items-center">
 
                 {/* Left text */}
@@ -43,7 +43,7 @@ function CustomizationSection() {
 
                 {/* Right demo */}
                 <Reveal direction="right" className="flex justify-center">
-                    <div className="bg-[var(--surface-50)] rounded-2xl border border-[var(--surface-200)] shadow-xl p-6 max-w-sm w-full">
+                    <div className="bg-[var(--surface-100)] rounded-2xl border border-[var(--surface-200)] shadow-xl p-6 max-w-sm w-full">
                         <div className="text-sm font-semibold mb-4 text-[var(--surface-900)]">Try Color Themes</div>
                         <div className="flex flex-wrap gap-3 mb-6">
                             {COLOR_THEMES.slice(0, 8).map(t => (

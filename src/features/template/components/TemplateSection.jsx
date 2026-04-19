@@ -25,7 +25,7 @@ function TemplateSection() {
     const templatesToShow = TEMPLATES.slice(0, 4);
 
     return (
-        <section id="templates" className="py-20 lg:py-28 bg-[var(--surface-50)]">
+        <section id="templates" className="py-20 lg:py-28 bg-[var(--surface-100)]">
             <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
 
                 <SectionHeader

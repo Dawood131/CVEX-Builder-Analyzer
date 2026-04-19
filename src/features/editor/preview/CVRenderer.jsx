@@ -272,7 +272,7 @@ function rEducation(data, d, isFirst) {
     ${dateBadge(x.startDate, x.endDate, x.current, fs)}
   </div>
   ${x.gpa ? `<div style="color:#64748b;font-size:${fs * 0.78}px;margin-top:3px;">GPA: <strong>${esc(x.gpa)}</strong></div>` : ""}
-  ${x.description ? `<div style="color:#475569;margin-top:4px;font-size:${fs * 0.85}px;line-height:1.6;">${esc(x.description)}</div>` : ""}
+  ${x.description ? `<div style="color:#475569;margin-top:4px;font-size:${fs * 0.85}px;line-height:1.6;word-break:break-word;overflow-wrap:break-word;white-space:pre-wrap;max-width:100%;">${esc(x.description)}</div>` : ""}
 </div>`).join("")
   );
 }
@@ -624,7 +624,7 @@ function buildSidebarRightHTML(data, d) {
     ${dateBadge(x.startDate, x.endDate, x.current, fs)}
   </div>
   ${x.gpa ? `<div style="color:#64748b;font-size:${fs * 0.8}px;margin-top:4px;">GPA: <strong>${esc(x.gpa)}</strong></div>` : ""}
-  ${x.description ? `<div style="color:#475569;margin-top:5px;font-size:${fs * 0.87}px;line-height:1.65;">${esc(x.description)}</div>` : ""}
+  ${x.description ? `<div style="color:#475569;margin-top:5px;font-size:${fs * 0.87}px;line-height:1.65;word-break:break-word;overflow-wrap:break-word;white-space:pre-wrap;max-width:100%;">${esc(x.description)}</div>` : ""}
 </div>`).join("");
       case "projects":
         if (!data.projects?.length) return "";

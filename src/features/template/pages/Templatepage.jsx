@@ -1,13 +1,13 @@
 import React, { useState, useMemo, useEffect } from "react";
-import { useCV } from "../../../context/CVContext";
 import { getTemplatesByCategory, getTemplateById } from "../../../utils/helper";
 import { Button } from "../../../shared/ui/UIComponents";
 import { cn } from "../../../utils/helper";
 import { TEMPLATE_CATEGORIES, TEMPLATES } from "../../../data/templates";
 import TemplateCard from "../components/TemplateCard";
 import { useNavigate } from 'react-router-dom';
+import { useCV } from '../../../context/CVContext';
+import { cvSession } from '../../../utils/cvSession';
 
-// React Icons
 import {
   FaArrowLeft,
   FaMoon,
@@ -17,14 +17,7 @@ import {
 
 function TemplatesPage() {
   const navigate = useNavigate();
-  const {
-    cvData,
-    loadVersion,
-    deleteVersion,
-    showToast,
-    darkMode,
-    setDarkMode,
-  } = useCV();
+  const { cvData, newCV, showToast, darkMode, setDarkMode } = useCV();
 
   const [filter, setFilter] = useState("all");
   const [search, setSearch] = useState("");
@@ -33,8 +26,6 @@ function TemplatesPage() {
     window.scrollTo(0, 0);
   }, []);
 
-
-  // Filter templates safely
   const filtered = useMemo(() => {
     let list = [...getTemplatesByCategory(filter, TEMPLATES)] || [];
     if (search.trim()) {
@@ -51,16 +42,20 @@ function TemplatesPage() {
 
   const selectTpl = (id) => {
     const tpl = getTemplateById(id, TEMPLATES);
-    cvData.design = cvData.design || {};
-    cvData.design.layout = tpl.layout || "single";
-    cvData.design.template = tpl.id;
-    cvData.design.primaryColor = tpl.colors?.[0] || "#4f46e5";
-    navigate("/editor");
+    if (!tpl) return;
+
+    // 1. CVContext mein fresh blank state set karo
+    newCV(tpl.id, tpl.colors?.[0] || '#4f46e5', tpl.layout || 'single');
+
+    // 2. Flag — EditorPage ko batao k Supabase se load mat karo
+    cvSession.markFreshTemplate();
+
+    // 3. Navigate
+    navigate('/editor');
   };
 
   return (
     <div className="animate-fadeIn min-h-screen bg-[var(--surface-50)]">
-      {/* Navbar */}
       <nav className="sticky top-0 z-50 bg-[var(--surface-50)]/60 backdrop-blur-xl border-b border-[var(--surface-400)]/20">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex items-center justify-between h-16">
           <div className="flex items-center gap-3">
@@ -69,11 +64,7 @@ function TemplatesPage() {
             </Button>
             <div className="flex items-center gap-2 cursor-pointer" onClick={() => navigate('/')}>
               <div className="w-12 h-12 rounded-xl flex items-center justify-center">
-                <img
-                  src="/CVEX Logo Design.png"
-                  alt="CVEX Logo"
-                  className="w-full h-full object-cover rounded-full"
-                />
+                <img src="/CVEX Logo Design.png" alt="CVEX Logo" className="w-full h-full object-cover rounded-full" />
               </div>
             </div>
           </div>
@@ -84,7 +75,6 @@ function TemplatesPage() {
       </nav>
 
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10">
-        {/* Header */}
         <div className="text-center max-w-2xl mx-auto mb-10 text-[var(--surface-900)]">
           <h1 className="text-3xl sm:text-4xl font-extrabold tracking-tight">
             Choose Your Template
@@ -94,24 +84,17 @@ function TemplatesPage() {
           </p>
         </div>
 
-        {/* Filters */}
         <div className="flex flex-wrap gap-2 justify-center mb-8">
           {TEMPLATE_CATEGORIES.map((cat) => {
             const Icon = cat.icon;
             return (
-              <Button
-                key={cat.id}
-                variant={filter === cat.id ? "primary" : "secondary"}
-                size="sm"
-                onClick={() => setFilter(cat.id)}
-              >
+              <Button key={cat.id} variant={filter === cat.id ? "primary" : "secondary"} size="sm" onClick={() => setFilter(cat.id)}>
                 <Icon className="mr-1" /> {cat.name}
               </Button>
             );
           })}
         </div>
 
-        {/* Search */}
         <div className="max-w-md mx-auto mb-8">
           <div className="relative">
             <FaSearch className="absolute left-3 top-1/2 -translate-y-1/2 text-[var(--surface-900)]" />
@@ -125,7 +108,6 @@ function TemplatesPage() {
           </div>
         </div>
 
-        {/* Grid */}
         <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-6">
           {filtered?.map((t) => (
             <TemplateCard

@@ -171,7 +171,7 @@ function StepContent({ step, form, setForm }) {
           type="textarea"
           value={form.description}
           onChange={(v) => setForm((p) => ({ ...p, description: v }))}
-          placeholder={"• Dean's List all 4 years\n• Thesis on distributed systems\n• Relevant courses: ML, Algorithms, OS"}
+          placeholder={"Strong academic background with consistent performance, hands-on project experience, and knowledge of core subjects"}
           hint="Add achievements, coursework, or honors"
           rows={5}
         />

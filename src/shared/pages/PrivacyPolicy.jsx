@@ -35,13 +35,13 @@ export default function PrivacyPolicy() {
 
                     {/* Center Title */}
                     <div className="text-center">
-                        <h1 className="text-4xl md:text-5xl font-bold font-poppins mb-4">
+                        <h1 className="text-4xl md:text-5xl font-bold font-poppins mb-4 text-[var(--surface-800)]">
                             Privacy <span className="text-[var(--brand-500)]">Policy</span>
                         </h1>
 
                         <div className="w-24 h-1 bg-gradient-to-r from-[var(--brand-500)] to-[var(--brand-300)] mx-auto rounded-full"></div>
 
-                        <p className="text-sm text-[var(--surface-500)] mt-4">
+                        <p className="text-sm text-[var(--surface-700)] mt-4">
                             Last updated: {new Date().toLocaleDateString()}
                         </p>
                     </div>
@@ -49,7 +49,7 @@ export default function PrivacyPolicy() {
                 </div>
 
                 {/* Content Card */}
-                <div className="bg-white shadow-xl rounded-2xl p-8 space-y-6">
+                <div className="bg-[var(--surface-100)] shadow-xl rounded-2xl p-8 space-y-6">
 
                     <section>
                         <h2 className="text-xl font-semibold mb-2 text-[var(--surface-900)]">

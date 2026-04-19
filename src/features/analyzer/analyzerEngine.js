@@ -130,173 +130,239 @@ function cvToText(cvData) {
 
 // ── Master prompt ─────────────────────────────────────────────────────────────
 function buildPrompt(cvText, jobDescription, industry) {
-  const CURRENT_DATE = new Date().toISOString().split("T")[0];
+  // ── Inject real current date from the browser/server clock ──────────────
+  const now = new Date();
+  const CURRENT_YEAR  = now.getFullYear();          // e.g. 2026
+  const CURRENT_MONTH = now.getMonth() + 1;         // 1-based, e.g. 4
+  const CURRENT_DAY   = now.getDate();              // e.g. 4
+  // Zero-pad for ISO format
+  const MM = String(CURRENT_MONTH).padStart(2, "0");
+  const DD = String(CURRENT_DAY).padStart(2, "0");
+  const CURRENT_DATE  = `${CURRENT_YEAR}-${MM}-${DD}`; // e.g. 2026-04-04
 
   const jdSection = jobDescription?.trim()
     ? `JOB DESCRIPTION:\n"""\n${jobDescription.trim()}\n"""\n`
     : "";
 
-  return `You are a professional CV coach. A real person has submitted their CV and needs honest, specific help to get more interviews.
+  return `You are a senior technical recruiter and ATS specialist with 15+ years of experience at companies like Google, Amazon, and McKinsey. You have reviewed over 50,000 CVs and know exactly what gets candidates rejected — and what gets them hired.
 
-CURRENT DATE: ${CURRENT_DATE}
+A candidate has submitted their CV for professional analysis. Your job is to give them an honest, brutally specific, and actionable assessment — the same feedback a $500/hr career coach would give.
 
-IMPORTANT DATE HANDLING RULES:
+════════════════════════════════════════════════════════════════
+SYSTEM DATE (INJECTED FROM SERVER — AUTHORITATIVE — DO NOT IGNORE)
+  TODAY      : ${CURRENT_DATE}
+  YEAR       : ${CURRENT_YEAR}
+  MONTH      : ${CURRENT_MONTH}  (1=Jan, 2=Feb, 3=Mar, 4=Apr … 12=Dec)
+  DAY        : ${CURRENT_DAY}
 
-- Interpret all dates in any format (e.g. "Apr 2026", "2025-03-10", "March 2024").
-- Normalize all dates before comparison.
+Your training knowledge cutoff does NOT affect this. The date above
+is real-time from the application server. Use ONLY ${CURRENT_DATE}
+as the reference point for every single date comparison below.
+════════════════════════════════════════════════════════════════
 
-- Treat CURRENT DATE as the exact reference point.
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+DATE VALIDATION — MANDATORY BEFORE ANY OTHER ANALYSIS
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+For EVERY date in the CV (experience, education, certifications, projects):
 
-- Any date that is AFTER CURRENT DATE (year/month/day comparison) is a FUTURE date.
+Step 1 — Parse the date to YEAR and MONTH (assume day=1 if not given)
+Step 2 — Compare against TODAY = ${CURRENT_DATE}
 
-- Even if the year is the same (2026), but:
-  • month > current month OR
-  • same month but day > current day  
-  → it is STILL a future date and must be treated as INVALID.
+  VALID   (on or before today):
+    • year < ${CURRENT_YEAR}
+    • year == ${CURRENT_YEAR}  AND  month <= ${CURRENT_MONTH}
 
-- Future dates must always be flagged as HIGH priority ATS errors.
+  INVALID (strictly in the future):
+    • year > ${CURRENT_YEAR}
+    • year == ${CURRENT_YEAR}  AND  month > ${CURRENT_MONTH}
 
-- Do NOT treat any future date as valid under any circumstance.
+"Present" / "Current" / "Ongoing" = treat as ${CURRENT_DATE} = VALID (as long as start date is valid)
 
-- Dates equal to or before CURRENT DATE are valid.
+Real examples using TODAY = ${CURRENT_DATE}:
+  "Jan 2025"  → 2025 < ${CURRENT_YEAR}                     → ✅ VALID
+  "Mar 2026"  → 2026 == ${CURRENT_YEAR}, month 3 < ${CURRENT_MONTH}  → ✅ VALID
+  "Apr 2026"  → 2026 == ${CURRENT_YEAR}, month 4 == ${CURRENT_MONTH} → ✅ VALID (current month)
+  "Jun 2026"  → 2026 == ${CURRENT_YEAR}, month 6 > ${CURRENT_MONTH}  → ❌ FUTURE DATE — ATS error
+  "2027"      → 2027 > ${CURRENT_YEAR}                     → ❌ FUTURE DATE — ATS error
 
-- If a date range is given (e.g. "Apr 2025 – Present"):
-  • Validate that the start date is NOT in the future
-  • "Present" is valid only if start date is ≤ CURRENT DATE
-
-- Always classify future date issues as:
-  priority: "high"
-  type: "error"
-  category: "ats"
-
-- Clearly mention:
-  • exact CV line
-  • the future date
-  • comparison with CURRENT DATE
-  • ATS/recruiter rejection risk
+⚠ ONLY flag a date as invalid if it is STRICTLY after ${CURRENT_DATE}.
+⚠ NEVER invent or assume dates not written in the CV.
+⚠ A date in the current month is VALID, not future.
 
 ${jdSection}
 
-CV:
+CV CONTENT:
 """
 ${cvText}
 """
 
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+ANALYSIS FRAMEWORK — HOW REAL ATS + RECRUITERS EVALUATE
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-TASK: Analyze this CV and return JSON.Your feedback must be directly useful — specific to THIS CV's actual content, not generic advice.
+[1] ATS PARSE-ABILITY (Does it even get read by software?)
+    • Standard section headings (Experience, Education, Skills — not fancy names)
+    • No tables, columns, text boxes, headers/footers with key info
+    • Dates in consistent, parseable format (MM/YYYY or Month YYYY)
+    • No future dates
+    • Email, phone, LinkedIn present and parseable
+    • File would survive Workday, Greenhouse, Lever, Taleo, iCIMS
 
-━━ SCORING(be honest, not harsh) ━━
-Overall score meaning:
-- 80 - 100: Strong, interview - ready CV
-  - 65 - 79: Good CV, clear improvements available
-    - 50 - 64: Decent CV, needs work on impact
-      - 35 - 49: Weak CV, significant improvements needed
-        - Below 35: Only for truly incomplete CVs
+[2] CONTENT QUALITY (Does it tell a compelling story?)
+    • Every bullet should follow: Action Verb + Task/Scope + Quantified Result
+    • BAD: "Responsible for managing team projects"
+    • GOOD: "Led cross-functional team of 8 engineers to deliver $2M product 3 weeks ahead of schedule"
+    • Summary must be role-specific, not a generic career objective
+    • Skills section must match the actual job market for this industry
 
-Judge relative to career stage.A junior dev with solid projects and clean formatting = 62 - 72. Never give below 35 unless CV is nearly empty.
+[3] KEYWORD OPTIMIZATION (Will it match job requirements?)
+    ${jobDescription?.trim()
+      ? "Match CV keywords against the provided job description. Flag every important JD keyword missing from the CV."
+      : `Evaluate against standard ${industry} industry keywords. Flag critical missing terms for this field.`}
+
+[4] RECRUITER FIRST-IMPRESSION (6-second scan test)
+    • Most recent role visible immediately
+    • Clear career progression
+    • No red flags: employment gaps >6 months unexplained, job-hopping <1yr, inconsistent dates
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+SCORING RUBRIC — BE CALIBRATED, NOT HARSH OR GENEROUS
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Score relative to career stage and industry. A fresh graduate is not compared to a senior director.
+
+  90–100  → Exceptional. Ready to apply to top-tier companies as-is.
+  80–89   → Strong. Minor polish needed. Will pass most ATS filters.
+  70–79   → Good foundation. A few clear gaps holding it back.
+  60–69   → Average. Passes ATS but unlikely to impress recruiters.
+  50–59   → Below average. Multiple issues reducing interview chances.
+  40–49   → Weak. Significant rework needed across most sections.
+  30–39   → Poor. Missing critical elements or major structural problems.
+  Below 30 → Only for CVs that are nearly empty or completely broken.
+
+NEVER score below 30 unless the CV has fewer than 3 real sections of content.
+NEVER inflate scores. A score of 85 should mean genuinely strong, not just "not terrible."
 
 Score dimensions:
-- contentScore: Quality of what IS present. 70 + if all main sections have good bullets.Never penalize for absent optional sections.
-- atsScore: Will Workday / Greenhouse parse this ? 75 + for clean structure, correct dates, standard headings.Deduct for actual issues only, never for missing optional sections.
-- keywordScore: ${jobDescription?.trim() ? "How many job description keywords appear in the CV?" : `Coverage of important ${industry} keywords`}
-- formattingScore: Clean, readable, professional layout. 75 + if consistent.
-- grammarScore: Action verbs, no first - person, professional tone, quantified where possible.
+  contentScore    — Quality and impact of bullets, summary, and section depth.
+                    70+ = solid bullets with some quantification.
+                    Deduct 5pts per vague/passive bullet cluster.
 
-━━ SUGGESTIONS — THIS IS THE MOST IMPORTANT PART ━━
-Each suggestion must:
-1. Reference ACTUAL text from this CV(quote it)
-2. Explain WHY it's a problem
-3. Give a CONCRETE rewrite the person can copy - paste
+  atsScore        — Technical parseability. Start at 85, deduct for real issues ONLY:
+                    -15 if future dates found
+                    -10 if contact info incomplete
+                    -10 if non-standard section headings
+                    -8  if inconsistent date formats
+                    -5  if no skills section
+                    Do NOT deduct for absent optional sections.
 
-The "rewrite" field is mandatory for medium and high priority suggestions.
+  keywordScore    — ${jobDescription?.trim()
+                      ? "JD keyword match rate. 80+ means most critical JD terms appear in CV."
+                      : `Industry keyword coverage for ${industry}. 80+ means strong terminology alignment.`}
 
-  Priority:
-- high: Will directly cause rejection(wrong dates, missing contact info, critical skill gaps if JD provided)
-- medium: Significantly hurts chances(vague bullets, generic summary, zero quantification)
-  - low: Nice - to - have(optional sections, minor polish)
+  formattingScore — Visual consistency and readability. 75+ if: consistent fonts implied,
+                    logical section order, appropriate length (1 page <5yrs, 2 pages 5-15yrs).
 
-Max: 3 high, 3 medium, 3 low.
+  grammarScore    — Language quality: strong action verbs, no first-person ("I", "my"),
+                    no spelling errors, professional tone, tense consistency (past for old roles).
 
-GOOD suggestion example:
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+SUGGESTIONS — THE MOST VALUABLE OUTPUT
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Rules for every suggestion:
+1. Quote the EXACT problematic text from this specific CV
+2. Explain the business/recruiter impact of the problem
+3. Provide a COMPLETE ready-to-use rewrite — not a template, the actual text
+4. Be specific to THIS person's career, not generic advice
+
+Priority levels:
+  HIGH   → Automatic rejection risk: future dates, broken contact info, critical missing skills vs JD
+  MEDIUM → Significantly reduces callback rate: weak bullets, generic summary, zero quantification, keyword gaps
+  LOW    → Competitive edge improvements: optional sections, stronger action verbs, minor polish
+
+Limit: max 3 HIGH + 3 MEDIUM + 3 LOW = 9 total.
+
+✅ GOOD suggestion (specific + actionable):
 {
   "priority": "medium",
-    "type": "warning",
-      "message": "Bullet 'Built reusable components' gives no context on scale or impact",
-        "rewrite": "Built 15+ reusable React components adopted across 3 projects, reducing development time by ~30%",
-          "category": "content"
+  "type": "warning",
+  "message": "Bullet 'Worked on backend APIs' at [Company Name] is vague — no technology, scale, or outcome mentioned",
+  "rewrite": "Engineered 12 RESTful APIs using Node.js and PostgreSQL serving 200K daily active users, reducing average response time by 40%",
+  "category": "content"
 }
 
-BAD suggestion(never do this):
+❌ BAD suggestion (generic — never do this):
 {
   "message": "Add quantified achievements to your experience section"
 }
 
-━━ SECTION SCORES ━━
-Score only sections that EXIST.For absent optional sections(certifications, awards, languages): score = null.
-
-Return ONLY valid JSON, no markdown, no explanation:
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+OUTPUT — RETURN ONLY VALID JSON. NO MARKDOWN. NO EXPLANATION.
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
 {
-  "overallScore": < 0 - 100 >,
-    "grade": < "A+" | "A" | "B+" | "B" | "C+" | "C" | "D" | "F" >,
-      "contentScore": < 0 - 100 >,
-        "atsScore": < 0 - 100 >,
-          "keywordScore": < 0 - 100 >,
-            "formattingScore": < 0 - 100 >,
-              "grammarScore": < 0 - 100 >,
-                "matchedKeywords": [
-                  {
-                    "keyword": <string>, "type": <"technical"|"soft_skill"|"action_verb"|"job_match">, "source": <"industry"|"job_description"> }
-                      ],
-                      "missingKeywords": [
-                      {"keyword": <string>, "type": <"technical"|"job_match">, "source": <"industry"|"job_description"> }
-                        ],
-                        "suggestions": [
-                        {
-                          "priority": <"high"|"medium"|"low">,
-                        "type": <"error"|"warning"|"info">,
-                        "message": <specific issue quoting actual CV text>,
-                          "rewrite": <concrete improved version to copy-paste, or "" if low priority>,
-                          "category": <"content"|"ats"|"keywords"|"formatting"|"general">
+  "overallScore": <0-100>,
+  "grade": <"A+"|"A"|"B+"|"B"|"C+"|"C"|"D"|"F">,
+  "contentScore": <0-100>,
+  "atsScore": <0-100>,
+  "keywordScore": <0-100>,
+  "formattingScore": <0-100>,
+  "grammarScore": <0-100>,
+  "matchedKeywords": [
+    { "keyword": <string>, "type": <"technical"|"soft_skill"|"action_verb"|"job_match">, "source": <"industry"|"job_description"> }
+  ],
+  "missingKeywords": [
+    { "keyword": <string>, "type": <"technical"|"job_match">, "source": <"industry"|"job_description"> }
+  ],
+  "suggestions": [
+    {
+      "priority": <"high"|"medium"|"low">,
+      "type": <"error"|"warning"|"info">,
+      "message": <exact CV text quoted + specific problem explained>,
+      "rewrite": <complete ready-to-use replacement text, or "" for low priority>,
+      "category": <"content"|"ats"|"keywords"|"formatting"|"general">
     }
-                          ],
-                          "sectionBreakdown": {
-                            "personal":       {"name": "Personal Info",        "score": <0-100 or null>, "suggestions": [<max 1 specific string>] },
-                          "summary":        {"name": "Professional Summary", "score": <0-100 or null>, "suggestions": [<max 1 specific rewrite>] },
-                          "experience":     {"name": "Work Experience",      "score": <0-100 or null>, "count": <int>, "suggestions": [<max 1 specific bullet rewrite>] },
-                            "education":      {"name": "Education",            "score": <0-100 or null>, "count": <int>, "suggestions": [<max 1 string>] },
-                              "skills":         {"name": "Skills",               "score": <0-100 or null>, "count": <int>, "suggestions": [<max 1 string>] },
-                                "projects":       {"name": "Projects",             "score": <0-100 or null>, "count": <int>, "suggestions": [<max 1 string>] },
-                                  "certifications": {"name": "Certifications",       "score": <0-100 or null>, "count": <int>, "suggestions": [] },
-                                    "languages":      {"name": "Languages",            "score": <0-100 or null>, "count": <int>, "suggestions": [] },
-                                      "awards":         {"name": "Awards",               "score": <0-100 or null>, "count": <int>, "suggestions": [] }
+  ],
+  "sectionBreakdown": {
+    "personal":       { "name": "Personal Info",        "score": <0-100|null>, "suggestions": [<max 1 specific actionable string>] },
+    "summary":        { "name": "Professional Summary", "score": <0-100|null>, "suggestions": [<max 1 full rewrite of the summary>] },
+    "experience":     { "name": "Work Experience",      "score": <0-100|null>, "count": <int>, "suggestions": [<max 1 improved bullet rewrite>] },
+    "education":      { "name": "Education",            "score": <0-100|null>, "count": <int>, "suggestions": [<max 1 specific string>] },
+    "skills":         { "name": "Skills",               "score": <0-100|null>, "count": <int>, "suggestions": [<max 1 specific string>] },
+    "projects":       { "name": "Projects",             "score": <0-100|null>, "count": <int>, "suggestions": [<max 1 specific string>] },
+    "certifications": { "name": "Certifications",       "score": <0-100|null>, "count": <int>, "suggestions": [] },
+    "languages":      { "name": "Languages",            "score": <0-100|null>, "count": <int>, "suggestions": [] },
+    "awards":         { "name": "Awards",               "score": <0-100|null>, "count": <int>, "suggestions": [] }
   },
-                                        "impactMetrics": {
-                                          "totalStatements":   <bullet count in experience>,
-                                            "quantified":        <bullets with numbers /metrics>,
-                                          "quantifiedPct":     <0-100>,
-                                          "actionLed":         <bullets starting with action verb>,
-                                            "actionLedPct":      <0-100>,
-                                            "resultOriented":    <bullets showing result /outcome>,
-                                            "resultOrientedPct": <0-100>
+  "impactMetrics": {
+    "totalStatements":   <total bullet points across all experience entries>,
+    "quantified":        <count of bullets containing a number, %, $, or metric>,
+    "quantifiedPct":     <0-100>,
+    "actionLed":         <count of bullets starting with a strong action verb>,
+    "actionLedPct":      <0-100>,
+    "resultOriented":    <count of bullets that show an outcome or business result>,
+    "resultOrientedPct": <0-100>
   },
-                                            "skillsGapRadar": [
-                                            {"category": "Technical Skills",  "score": <0-100>, "matched": <int>, "total": <int> },
-                                              {"category": "Soft Skills",       "score": <0-100>, "matched": <int>, "total": <int> },
-                                                {"category": "Action Language",   "score": <0-100>, "matched": <int>, "total": <int> },
-                                                  {"category": "Quantification",    "score": <0-100>, "matched": <int>, "total": <int> },
-                                                    {"category": "Completeness",      "score": <0-100>, "matched": <int>, "total": <int> }
-                                                      ],
-                                                      "atsDetails": [
-                                                      {"type": <"error"|"warning"|"info">, "msg": <specific ATS issue found in this CV, max 120 chars> }
-                                                      ],
-                                                      "contentDetails": [
-                                                      {"type": <"error"|"warning"|"info">, "msg": <specific content observation, max 120 chars> }
-                                                      ]
+  "skillsGapRadar": [
+    { "category": "Technical Skills",  "score": <0-100>, "matched": <int>, "total": <int> },
+    { "category": "Soft Skills",       "score": <0-100>, "matched": <int>, "total": <int> },
+    { "category": "Action Language",   "score": <0-100>, "matched": <int>, "total": <int> },
+    { "category": "Quantification",    "score": <0-100>, "matched": <int>, "total": <int> },
+    { "category": "Completeness",      "score": <0-100>, "matched": <int>, "total": <int> }
+  ],
+  "atsDetails": [
+    { "type": <"error"|"warning"|"info">, "msg": <specific ATS finding citing actual CV text, max 120 chars> }
+  ],
+  "contentDetails": [
+    { "type": <"error"|"warning"|"info">, "msg": <specific content observation citing actual CV text, max 120 chars> }
+  ]
 }
 
-                                                      Limits: matchedKeywords ≤15, missingKeywords ≤10, suggestions ≤9, atsDetails ≤4, contentDetails ≤4. All strings ≤160 chars.`;
-}// ── Gemini API call ───────────────────────────────────────────────────────────
+Hard limits: matchedKeywords ≤15, missingKeywords ≤10, suggestions ≤9, atsDetails ≤5, contentDetails ≤5. All string values ≤160 chars.`;
+}
+
+// ── Gemini API call ───────────────────────────────────────────────────────────
 async function callGemini(prompt) {
   if (!GEMINI_API_KEY) {
     throw new Error(
@@ -313,7 +379,7 @@ async function callGemini(prompt) {
         temperature: 0.2,   // low = consistent, structured JSON output
         topK: 32,
         topP: 0.95,
-        maxOutputTokens: 8192,
+        maxOutputTokens: 16384,
       },
       safetySettings: [
         { category: "HARM_CATEGORY_HARASSMENT", threshold: "BLOCK_NONE" },
@@ -339,62 +405,75 @@ async function callGemini(prompt) {
 
 // ── JSON extractor — handles truncated / wrapped Gemini responses ────────────
 function extractJSON(raw) {
-  // 1. Strip markdown fences
+  if (!raw || typeof raw !== "string") throw new Error("Gemini returned empty response");
+
+  // 1. Strip ALL markdown fences (Gemini sometimes wraps entire response)
   let cleaned = raw
-    .replace(/^```(?:json)?\s*/i, "")
-    .replace(/\s*```\s*$/, "")
+    .replace(/^```(?:json)?[ \t]*\r?\n?/im, "")
+    .replace(/\r?\n?```[ \t]*$/im, "")
     .trim();
 
-  // 2. Try direct parse first (happy path)
-  try { return JSON.parse(cleaned); } catch { }
+  // If stripping left nothing useful, use raw
+  if (!cleaned || !cleaned.includes("{")) cleaned = raw.trim();
 
-  // 3. Find the outermost {... } block
+  // 2. Try direct parse (happy path)
+  try { return JSON.parse(cleaned); } catch { /* continue */ }
+
+  // 3. Find the first '{' and walk to find the matching '}'
   const start = cleaned.indexOf("{");
-  if (start === -1) throw new Error("No JSON object found in Gemini response");
-  let extracted = cleaned.slice(start);
+  if (start === -1) {
+    console.error("[extractJSON] No JSON object found. Response:", raw.slice(0, 300));
+    throw new Error("No JSON object found in Gemini response");
+  }
 
-  // 4. Try parsing as-is
-  try { return JSON.parse(extracted); } catch { }
+  let depth = 0, inStr = false, esc = false, end = -1;
+  for (let i = start; i < cleaned.length; i++) {
+    const ch = cleaned[i];
+    if (esc)         { esc = false; continue; }
+    if (ch === "\\") { esc = true;  continue; }
+    if (ch === '"')  { inStr = !inStr; continue; }
+    if (inStr)       continue;
+    if (ch === "{")        depth++;
+    else if (ch === "}") { depth--; if (depth === 0) { end = i; break; } }
+  }
 
-  // 5. JSON is truncated — try to auto-close it
-  extracted = autoCloseJSON(extracted);
-  try { return JSON.parse(extracted); } catch { }
+  // 4. Balanced block found — try parsing it
+  if (end !== -1) {
+    try { return JSON.parse(cleaned.slice(start, end + 1)); } catch { /* fall through */ }
+  }
 
+  // 5. Truncated — repair and retry
+  const fragment = end === -1 ? cleaned.slice(start) : cleaned.slice(start, end + 1);
+  const repaired = autoCloseJSON(fragment);
+  try { return JSON.parse(repaired); } catch { /* fall through */ }
+
+  // 6. Debug log + throw
+  console.error("[extractJSON] Parse failed. Raw (first 800 chars):", raw.slice(0, 800));
   throw new Error("Could not parse Gemini JSON response — try again");
 }
 
-// Attempt to close truncated JSON by counting open brackets/braces/strings
+// Repair truncated JSON by closing unclosed brackets/braces/strings
 function autoCloseJSON(str) {
-  const stack = [];
+  const stack  = [];
   let inString = false;
-  let escape = false;
+  let escape   = false;
   let lastGood = 0;
 
   for (let i = 0; i < str.length; i++) {
     const ch = str[i];
-    if (escape) { escape = false; continue; }
-    if (ch === "\\") { escape = true; continue; }
-    if (ch === "\"" && !escape) {
-      inString = !inString;
-      if (!inString) lastGood = i;
-      continue;
-    }
-    if (inString) continue;
+    if (escape)        { escape = false; continue; }
+    if (ch === "\\") { escape = true;  continue; }
+    if (ch === '"')    { inString = !inString; if (!inString) lastGood = i; continue; }
+    if (inString)      continue;
 
-    if (ch === "{" || ch === "[") { stack.push(ch); }
-    else if (ch === "}" || ch === "]") {
-      stack.pop();
-      if (stack.length === 0) lastGood = i;
-    } else if (ch !== "," && ch !== ":" && ch !== " " && ch !== "\n" && ch !== "\t") {
-      lastGood = i;
-    }
+    if      (ch === "{" || ch === "[")  { stack.push(ch); }
+    else if (ch === "}" || ch === "]")  { stack.pop(); if (stack.length === 0) lastGood = i; }
+    else if (!" \n\t,:".includes(ch)) { lastGood = i; }
   }
 
-  // Trim to last complete value, then close all open containers
   let result = str.slice(0, lastGood + 1).trimEnd();
-  // Remove trailing comma if any
-  result = result.replace(/,\s*$/, "");
-  // Close open containers in reverse order
+  if (inString) result += '"';           // close dangling string
+  result = result.replace(/,\s*$/, ""); // strip trailing comma
   for (let i = stack.length - 1; i >= 0; i--) {
     result += stack[i] === "{" ? "}" : "]";
   }
@@ -464,12 +543,12 @@ function scoreToGrade(score) {
  * Async drop-in replacement for the old synchronous AnalyzerEngine.analyze().
  *
  * @param   {object}  cvData
-                                                      * @param   {object}  [options]
-                                                      * @param   {string}  [options.jobDescription]  - Raw text of job posting
-                                                      * @param   {string}  [options.industry]        - One of INDUSTRIES (default "general")
-                                                      * @param   {string}  [options.scanId]          - Optional pre-generated ID
-                                                      * @returns {Promise < object >}                   - Full analysis result
-                                                      */
+ * @param   {object}  [options]
+ * @param   {string}  [options.jobDescription]  - Raw text of job posting
+ * @param   {string}  [options.industry]        - One of INDUSTRIES (default "general")
+ * @param   {string}  [options.scanId]          - Optional pre-generated ID
+ * @returns {Promise<object>}                   - Full analysis result
+ */
 export async function analyze(cvData, options = {}) {
   const {
     jobDescription = "",

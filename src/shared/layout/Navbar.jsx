@@ -9,7 +9,11 @@ import { cn } from '../../utils/helper';
 
 /* ── User Avatar — initials only ─────────────────────────────────── */
 function Avatar({ user, profile }) {
-    const name = profile?.full_name || user?.email || "U";
+    const name = profile?.full_name
+        || user?.user_metadata?.full_name
+        || user?.user_metadata?.name
+        || user?.email
+        || "U";
     const initials = name
         .split(" ")
         .map(w => w[0])
@@ -25,7 +29,7 @@ function Avatar({ user, profile }) {
 }
 
 /* ── User Dropdown ───────────────────────────────────────────────── */
-function UserDropdown({ user, profile, onSignOut }) {
+function UserDropdown({ user, profile, onSignOut, signingOut }) {
     const [open, setOpen] = useState(false);
     const ref = useRef(null);
     const navigate = useNavigate();
@@ -37,7 +41,12 @@ function UserDropdown({ user, profile, onSignOut }) {
         return () => document.removeEventListener("mousedown", handler);
     }, []);
 
-    const name = profile?.full_name || user?.email?.split("@")[0] || "User";
+    const name = profile?.full_name
+        || user?.user_metadata?.full_name
+        || user?.user_metadata?.name
+        || user?.email?.split("@")[0]
+        || "User";
+
     const email = user?.email || "";
 
     return (
@@ -86,10 +95,23 @@ function UserDropdown({ user, profile, onSignOut }) {
                         {/* Sign out */}
                         <button
                             onClick={() => { setOpen(false); onSignOut(); }}
-                            className="w-full flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm font-medium text-red-600 hover:bg-red-50 transition-colors cursor-pointer"
+                            disabled={signingOut}
+                            className="w-full flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm font-medium text-red-600 hover:bg-red-50 transition-colors cursor-pointer disabled:opacity-60"
                         >
-                            <FaSignOutAlt className="text-xs" />
-                            Sign out
+                            {signingOut ? (
+                                <>
+                                    <svg className="animate-spin w-3 h-3" fill="none" viewBox="0 0 24 24">
+                                        <circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="3" opacity="0.25" />
+                                        <path fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+                                    </svg>
+                                    Signing out...
+                                </>
+                            ) : (
+                                <>
+                                    <FaSignOutAlt className="text-xs" />
+                                    Sign out
+                                </>
+                            )}
                         </button>
                     </div>
                 </div>
@@ -106,6 +128,7 @@ function Navbar() {
     const { user, profile, signOut } = useAuth();
     const navigate = useNavigate();
     const [mobileOpen, setMobileOpen] = useState(false);
+    const [signingOut, setSigningOut] = useState(false);
 
     useEffect(() => {
         if (darkMode) document.documentElement.classList.add('dark');
@@ -118,7 +141,21 @@ function Navbar() {
     };
 
     const handleSignOut = async () => {
-        await signOut();
+        if (signingOut) return;
+        setSigningOut(true);
+        setMobileOpen(false);
+
+        try {
+            Object.keys(localStorage).forEach(key => {
+                if (key.startsWith(`cvex_cvData_${user?.id}`)) {
+                    localStorage.removeItem(key);
+                }
+            });
+
+            await signOut(); 
+        } catch { }
+
+        setSigningOut(false);
         navigate('/');
     };
 
@@ -156,8 +193,17 @@ function Navbar() {
                         </Button>
 
                         {/* Desktop auth */}
+                        {/* Desktop auth — PEHLE signingOut check karo */}
                         <div className="hidden md:flex items-center gap-3">
-                            {!user ? (
+                            {signingOut ? (
+                                <div className="flex items-center gap-2 px-3 py-2 text-sm text-[var(--surface-500)]">
+                                    <svg className="animate-spin w-3 h-3" fill="none" viewBox="0 0 24 24">
+                                        <circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="3" opacity="0.25" />
+                                        <path fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+                                    </svg>
+                                    Signing out...
+                                </div>
+                            ) : !user ? (
                                 <>
                                     <Button variant="secondary" size="sm" onClick={() => navigate("/auth/login")}>
                                         <FaSignInAlt className="text-xs mr-1" /> Sign In
@@ -171,6 +217,7 @@ function Navbar() {
                                     user={user}
                                     profile={profile}
                                     onSignOut={handleSignOut}
+                                    signingOut={signingOut}
                                 />
                             )}
                         </div>
@@ -198,7 +245,10 @@ function Navbar() {
                         <div className="flex items-center gap-3 px-1 py-2">
                             <div className="min-w-0">
                                 <p className="text-xs font-bold text-[var(--surface-900)] truncate">
-                                    {profile?.full_name || user?.email?.split("@")[0]}
+                                    {profile?.full_name
+                                        || user?.user_metadata?.full_name
+                                        || user?.user_metadata?.name
+                                        || user?.email?.split("@")[0]}
                                 </p>
                                 <p className="text-[10px] text-[var(--surface-400)] truncate">{user?.email}</p>
                             </div>
@@ -239,7 +289,15 @@ function Navbar() {
                 ))}
 
                 <div className="flex gap-2 mt-2">
-                    {!user ? (
+                    {signingOut ? (
+                        <div className="flex-1 flex items-center justify-center gap-2 py-2 rounded-xl border border-[var(--surface-200)] bg-[var(--surface-100)] text-[var(--surface-500)] text-sm font-semibold">
+                            <svg className="animate-spin w-3 h-3" fill="none" viewBox="0 0 24 24">
+                                <circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="3" opacity="0.25" />
+                                <path fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+                            </svg>
+                            Signing out...
+                        </div>
+                    ) : !user ? (
                         <>
                             <Button variant="secondary" className="flex-1"
                                 onClick={() => { setMobileOpen(false); navigate("/auth/login"); }}>
@@ -252,7 +310,8 @@ function Navbar() {
                         </>
                     ) : (
                         <button
-                            onClick={() => { setMobileOpen(false); handleSignOut(); }}
+                            onClick={handleSignOut}
+                            disabled={signingOut}
                             className="flex-1 flex items-center justify-center gap-2 py-2 rounded-xl border border-red-200 bg-red-50 text-red-600 text-sm font-semibold hover:bg-red-100 transition-all cursor-pointer"
                         >
                             <FaSignOutAlt className="text-xs" /> Sign out

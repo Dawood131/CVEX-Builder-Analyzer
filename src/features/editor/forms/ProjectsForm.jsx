@@ -167,7 +167,6 @@ function StepContent({ step, form, setForm }) {
           value={form.description}
           onChange={(v) => setForm((p) => ({ ...p, description: v }))}
           placeholder={"• Built a full-stack platform with 10k+ users\n• Reduced load time by 60% with lazy loading\n• Integrated Stripe payments and JWT auth"}
-          hint="Use bullet points (•) for each key achievement"
           rows={5}
         />
       </IconField>

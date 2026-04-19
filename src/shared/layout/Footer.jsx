@@ -50,7 +50,7 @@ function Footer() {
   };
 
   return (
-    <footer className="bg-slate-950 text-white py-16 transition-colors duration-300">
+    <footer className="bg-[var(--surface-50)]  text-[var(--surface-900)] py-16 transition-colors duration-300">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-12 gap-10">
 
@@ -68,7 +68,7 @@ function Footer() {
                 />
               </div>
             </div>
-            <p className="text-sm leading-relaxed text-gray-300">
+            <p className="text-sm leading-relaxed text-[var(--surface-900)]">
               Analyze your CV with AI and build professional, ATS-friendly CVs in minutes.
             </p>
 
@@ -77,9 +77,9 @@ function Footer() {
               {socialIcons.map(({ icon, key }) => (
                 <button
                   key={key}
-                  className="group w-10 h-10 rounded-lg bg-gray-800 hover:bg-purple-400 flex items-center justify-center transition-all duration-200 hover:scale-105 cursor-pointer"
+                  className="group w-10 h-10 rounded-lg bg-[var(--surface-200)] hover:bg-purple-400 flex items-center justify-center transition-all duration-200 hover:scale-105 cursor-pointer"
                 >
-                  <span className="text-gray-300 group-hover:text-white transition-colors text-sm">
+                  <span className="text-[var(--surface-800)] group-hover:text-white transition-colors text-sm">
                     {icon}
                   </span>
                 </button>
@@ -97,7 +97,7 @@ function Footer() {
                 {productLinks.map(([text, fn]) => (
                   <li key={text}>
                     <button
-                      className="hover:text-purple-300  transition-colors duration-200 text-left cursor-pointer"
+                      className="hover:text-purple-400  transition-colors duration-200 text-left cursor-pointer"
                       onClick={fn}
                     >
                       {text}
@@ -149,7 +149,7 @@ function Footer() {
         </div>
 
         {/* Footer bottom */}
-        <div className="border-t border-gray-700 mt-12 pt-8 text-center text-smtext-gray-400 -mb-8 transition-colors duration-300">
+        <div className="border-t border-[var(--surface-300)] mt-12 pt-8 text-center text-smtext-gray-400 -mb-8 transition-colors duration-300">
           © {new Date().getFullYear()} CVEX. All Rights Reserved.
         </div>
       </div>

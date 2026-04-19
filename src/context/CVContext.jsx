@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useReducer, useState, useEffect, useCallback, useRef } from 'react';
-
+import { useAuth } from "../context/AuthContext";
 // ---- Default CV Data ----
 export const DEFAULT_CV = {
   personal: {
@@ -45,6 +45,9 @@ function cvReducer(state, action) {
   switch (action.type) {
     case 'UPDATE_PERSONAL':
       return { ...state, personal: { ...state.personal, ...action.payload }, meta: { ...state.meta, updatedAt: now } };
+
+    case 'UPDATE_META':
+      return { ...state, meta: { ...state.meta, ...action.payload, updatedAt: now } };
 
     case 'UPDATE_DESIGN':
       return { ...state, design: { ...state.design, ...action.payload }, meta: { ...state.meta, updatedAt: now } };
@@ -109,7 +112,12 @@ function cvReducer(state, action) {
     case 'NEW_CV':
       return {
         ...JSON.parse(JSON.stringify(DEFAULT_CV)),
-        design: { ...DEFAULT_CV.design, template: action.template || 'professional', primaryColor: action.color || '#4f46e5' },
+        design: {
+          ...DEFAULT_CV.design,
+          template: action.template || 'professional',
+          primaryColor: action.color || '#4f46e5',
+          layout: action.layout || 'single',
+        },
         meta: { ...DEFAULT_CV.meta, createdAt: now, updatedAt: now }
       };
 
@@ -137,23 +145,48 @@ function mergeDefaults(saved) {
 // ---- Context ----
 const CVContext = createContext(null);
 
-// Max versions in history
-const MAX_HISTORY_VERSIONS = 20;
-
 export function CVProvider({ children }) {
-  const loadInitial = () => {
-    try {
-      const saved = localStorage.getItem('cvex_currentCV');
-      return saved ? mergeDefaults(JSON.parse(saved)) : JSON.parse(JSON.stringify(DEFAULT_CV));
-    } catch {
-      return JSON.parse(JSON.stringify(DEFAULT_CV));
+  const { user } = useAuth();
+  const currentUserIdRef = useRef(null);
+  const [cvData, dispatch] = useReducer(cvReducer, null, () =>
+    JSON.parse(JSON.stringify(DEFAULT_CV))
+  );
+
+  const [darkMode, setDarkModeState] = useState(() =>
+    localStorage.getItem('cvex_darkMode') === 'true'
+  );
+
+  useEffect(() => {
+    const newUserId = user?.id || null;
+
+   if (currentUserIdRef.current !== newUserId) {
+  currentUserIdRef.current = newUserId;
+
+  if (!newUserId) {
+    dispatch({ type: 'NEW_CV' });
+    return;
+  }
+}
+    if (newUserId) {
+      const key = `cvex_cvData_${newUserId}`;
+      const saved = localStorage.getItem(key);
+
+      if (saved) {
+        dispatch({ type: 'LOAD_CV', payload: JSON.parse(saved) });
+      }
     }
-  };
 
-  const [cvData, dispatch] = useReducer(cvReducer, null, loadInitial);
+  }, [user?.id]);
 
-  // Dark mode
-  const [darkMode, setDarkModeState] = useState(() => localStorage.getItem('cvex_darkMode') === 'true');
+  useEffect(() => {
+  if (!cvData || !user) return;
+
+  if (currentUserIdRef.current !== user.id) return;
+
+  const key = `cvex_cvData_${user.id}`;
+  localStorage.setItem(key, JSON.stringify(cvData));
+
+}, [cvData, user]);
 
   useEffect(() => {
     document.documentElement.classList.toggle('dark', darkMode);
@@ -162,18 +195,9 @@ export function CVProvider({ children }) {
 
   const toggleDarkMode = useCallback(() => setDarkModeState(prev => !prev), []);
 
-  // Saved CVs — manual versions only
-  const [savedCVs, setSavedCVs] = useState(() => {
-    try { return JSON.parse(localStorage.getItem('cvex_savedCVs') || '[]'); } catch { return []; }
-  });
-
-  useEffect(() => {
-    localStorage.setItem('cvex_savedCVs', JSON.stringify(savedCVs));
-  }, [savedCVs]);
-
-  // Undo/Redo
-  const historyRef = useRef({ stack: [JSON.stringify(loadInitial())], index: 0 });
-  const lastSnap = useRef(JSON.stringify(loadInitial()));
+  const initialSnap = useRef(JSON.stringify(cvData));
+  const historyRef = useRef({ stack: [initialSnap.current], index: 0 });
+  const lastSnap = useRef(initialSnap.current);
 
   useEffect(() => {
     const snap = JSON.stringify(cvData);
@@ -209,74 +233,52 @@ export function CVProvider({ children }) {
     }
   }, []);
 
-  // Autosave to localStorage only — NOT to history
-  const saveTimer = useRef(null);
-  useEffect(() => {
-    clearTimeout(saveTimer.current);
-    saveTimer.current = setTimeout(() => {
-      try { localStorage.setItem('cvex_currentCV', JSON.stringify(cvData)); } catch { }
-    }, 500);
-    return () => clearTimeout(saveTimer.current);
-  }, [cvData]);
+  const newCV = useCallback((template, color, layout = 'single') => {
+    dispatch({ type: 'NEW_CV', template, color, layout });
+    const freshSnap = JSON.stringify({
+      ...JSON.parse(JSON.stringify(DEFAULT_CV)),
+      design: {
+        ...DEFAULT_CV.design,
+        template: template || 'professional',
+        primaryColor: color || '#4f46e5',
+        layout: layout || 'single',
+      },
+    });
+    historyRef.current = { stack: [freshSnap], index: 0 };
+    lastSnap.current = freshSnap;
+  }, []);
 
-  // Active Section
   const [activeSection, setActiveSection] = useState('personal');
   const [previewScale, setPreviewScale] = useState(0.55);
 
-  // Save version — MANUAL only, called explicitly by user
-  // Auto-saves (autosave timer) do NOT call this
-  const saveVersion = useCallback((name) => {
-    const newVersion = {
-      id: Date.now().toString(),
-      name,
-      savedAt: Date.now(),
-      data: JSON.parse(JSON.stringify(cvData)), // deep copy
-      layout: cvData.design?.layout,
-    };
-    setSavedCVs(prev => {
-      // Keep only latest MAX_HISTORY_VERSIONS, oldest removed first
-      const updated = [...prev, newVersion];
-      return updated.length > MAX_HISTORY_VERSIONS
-        ? updated.slice(updated.length - MAX_HISTORY_VERSIONS)
-        : updated;
-    });
-  }, [cvData]);
-
-  const loadVersion = useCallback((id) => {
-    const cv = savedCVs.find(c => c.id === id);
-    if (cv) dispatch({ type: 'LOAD_CV', payload: cv.data });
-  }, [savedCVs]);
-
-  const deleteVersion = useCallback((id) => {
-    setSavedCVs(prev => prev.filter(c => c.id !== id));
-  }, []);
-
-  const newCV = useCallback((template, color) => {
-    dispatch({ type: 'NEW_CV', template, color });
-    historyRef.current = { stack: [], index: -1 };
-  }, []);
-
-  // Toast System
   const [toast, setToast] = useState(null);
+  const toastTimer = useRef(null);
 
-  const showToast = useCallback((message, type = "info") => {
+  const showToast = useCallback((message, type = 'info') => {
+    clearTimeout(toastTimer.current);
     setToast({ message, type });
-    setTimeout(() => {
-      setToast(null);
-    }, 3000);
+    toastTimer.current = setTimeout(() => setToast(null), 3000);
   }, []);
 
   return (
     <CVContext.Provider value={{
-      cvData, dispatch,
-      darkMode, setDarkMode: toggleDarkMode,
-      savedCVs, saveVersion, loadVersion, deleteVersion, newCV,
-      undo, redo, canUndo, canRedo,
-      activeSection, setActiveSection,
-      previewScale, setPreviewScale,
-      DEFAULT_CV, uid,
+      cvData,
+      dispatch,
+      darkMode,
+      setDarkMode: toggleDarkMode,
+      undo,
+      redo,
+      canUndo,
+      canRedo,
+      newCV,
+      activeSection,
+      setActiveSection,
+      previewScale,
+      setPreviewScale,
+      DEFAULT_CV,
+      uid,
       showToast,
-      toast
+      toast,
     }}>
       {children}
     </CVContext.Provider>

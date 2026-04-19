@@ -1,4 +1,3 @@
-// src/context/AuthContext.jsx
 import React, { createContext, useContext, useEffect, useState, useCallback } from "react";
 import { supabase } from "../lib/supabaseClient";
 
@@ -26,17 +25,20 @@ export function AuthProvider({ children }) {
   }, []);
 
   useEffect(() => {
+    // Session restore — pehli baar
     supabase.auth.getSession().then(({ data: { session } }) => {
       setUser(session?.user ?? null);
       if (session?.user) fetchProfile(session.user.id);
-      setLoading(false);
+      setLoading(false); // ← session check complete, ab CVContext fetch shuru kar sakta hai
     });
 
+    // Auth state changes (login/logout/token refresh)
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       (_event, session) => {
         setUser(session?.user ?? null);
         if (session?.user) fetchProfile(session.user.id);
         else setProfile(null);
+        // Note: loading yahan set nahi karte — getSession already handle kar chuka
       }
     );
 
@@ -56,7 +58,6 @@ export function AuthProvider({ children }) {
     if (error) setAuthError(error.message);
     return { data, error };
   };
-
 
   const signIn = async ({ email, password }) => {
     setAuthError(null);
@@ -91,7 +92,13 @@ export function AuthProvider({ children }) {
   };
 
   const signOut = async () => {
-    await supabase.auth.signOut();
+    try {
+      await Promise.race([
+        supabase.auth.signOut(),
+        new Promise(resolve => setTimeout(resolve, 3000))
+      ]);
+    } catch { }
+
     setUser(null);
     setProfile(null);
   };
