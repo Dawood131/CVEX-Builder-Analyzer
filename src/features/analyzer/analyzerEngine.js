@@ -3,10 +3,9 @@ const GEMINI_API_KEY =
   process.env?.REACT_APP_GEMINI_API_KEY ||
   "";
 
-const GEMINI_MODEL = "gemini-2.5-flash"; // fast + cheap, good for structured tasks
+const GEMINI_MODEL = "gemini-2.5-flash";
 const GEMINI_URL = `https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_MODEL}:generateContent?key=${GEMINI_API_KEY}`;
 
-// ── Industry list (kept client-side — no AI needed for this) ─────────────────
 export const INDUSTRIES = [
   "technology", "finance", "marketing", "healthcare",
   "education", "engineering", "design", "sales", "hr", "legal", "general",
@@ -16,9 +15,7 @@ export function getIndustries() {
   return INDUSTRIES;
 }
 
-// ── CV → plain text for the prompt ───────────────────────────────────────────
 function cvToText(cvData) {
-  // If this is a PDF upload, use the raw extracted text directly
   if (cvData._pdfText) {
     return cvData._pdfText;
   }
@@ -130,15 +127,13 @@ function cvToText(cvData) {
 
 // ── Master prompt ─────────────────────────────────────────────────────────────
 function buildPrompt(cvText, jobDescription, industry) {
-  // ── Inject real current date from the browser/server clock ──────────────
   const now = new Date();
-  const CURRENT_YEAR  = now.getFullYear();          // e.g. 2026
-  const CURRENT_MONTH = now.getMonth() + 1;         // 1-based, e.g. 4
-  const CURRENT_DAY   = now.getDate();              // e.g. 4
-  // Zero-pad for ISO format
+  const CURRENT_YEAR = now.getFullYear();
+  const CURRENT_MONTH = now.getMonth() + 1;
+  const CURRENT_DAY = now.getDate();
   const MM = String(CURRENT_MONTH).padStart(2, "0");
   const DD = String(CURRENT_DAY).padStart(2, "0");
-  const CURRENT_DATE  = `${CURRENT_YEAR}-${MM}-${DD}`; // e.g. 2026-04-04
+  const CURRENT_DATE = `${CURRENT_YEAR}-${MM}-${DD}`;
 
   const jdSection = jobDescription?.trim()
     ? `JOB DESCRIPTION:\n"""\n${jobDescription.trim()}\n"""\n`
@@ -257,8 +252,8 @@ Score dimensions:
                     Do NOT deduct for absent optional sections.
 
   keywordScore    — ${jobDescription?.trim()
-                      ? "JD keyword match rate. 80+ means most critical JD terms appear in CV."
-                      : `Industry keyword coverage for ${industry}. 80+ means strong terminology alignment.`}
+      ? "JD keyword match rate. 80+ means most critical JD terms appear in CV."
+      : `Industry keyword coverage for ${industry}. 80+ means strong terminology alignment.`}
 
   formattingScore — Visual consistency and readability. 75+ if: consistent fonts implied,
                     logical section order, appropriate length (1 page <5yrs, 2 pages 5-15yrs).
@@ -376,7 +371,7 @@ async function callGemini(prompt) {
     body: JSON.stringify({
       contents: [{ parts: [{ text: prompt }] }],
       generationConfig: {
-        temperature: 0.2,   // low = consistent, structured JSON output
+        temperature: 0.2,
         topK: 32,
         topP: 0.95,
         maxOutputTokens: 16384,
@@ -403,23 +398,18 @@ async function callGemini(prompt) {
   return text;
 }
 
-// ── JSON extractor — handles truncated / wrapped Gemini responses ────────────
 function extractJSON(raw) {
   if (!raw || typeof raw !== "string") throw new Error("Gemini returned empty response");
 
-  // 1. Strip ALL markdown fences (Gemini sometimes wraps entire response)
   let cleaned = raw
     .replace(/^```(?:json)?[ \t]*\r?\n?/im, "")
     .replace(/\r?\n?```[ \t]*$/im, "")
     .trim();
 
-  // If stripping left nothing useful, use raw
   if (!cleaned || !cleaned.includes("{")) cleaned = raw.trim();
 
-  // 2. Try direct parse (happy path)
-  try { return JSON.parse(cleaned); } catch { /* continue */ }
+  try { return JSON.parse(cleaned); } catch { }
 
-  // 3. Find the first '{' and walk to find the matching '}'
   const start = cleaned.indexOf("{");
   if (start === -1) {
     console.error("[extractJSON] No JSON object found. Response:", raw.slice(0, 300));
@@ -429,58 +419,53 @@ function extractJSON(raw) {
   let depth = 0, inStr = false, esc = false, end = -1;
   for (let i = start; i < cleaned.length; i++) {
     const ch = cleaned[i];
-    if (esc)         { esc = false; continue; }
-    if (ch === "\\") { esc = true;  continue; }
-    if (ch === '"')  { inStr = !inStr; continue; }
-    if (inStr)       continue;
-    if (ch === "{")        depth++;
+    if (esc) { esc = false; continue; }
+    if (ch === "\\") { esc = true; continue; }
+    if (ch === '"') { inStr = !inStr; continue; }
+    if (inStr) continue;
+    if (ch === "{") depth++;
     else if (ch === "}") { depth--; if (depth === 0) { end = i; break; } }
   }
 
-  // 4. Balanced block found — try parsing it
   if (end !== -1) {
-    try { return JSON.parse(cleaned.slice(start, end + 1)); } catch { /* fall through */ }
+    try { return JSON.parse(cleaned.slice(start, end + 1)); } catch { }
   }
 
-  // 5. Truncated — repair and retry
   const fragment = end === -1 ? cleaned.slice(start) : cleaned.slice(start, end + 1);
   const repaired = autoCloseJSON(fragment);
-  try { return JSON.parse(repaired); } catch { /* fall through */ }
+  try { return JSON.parse(repaired); } catch { }
 
-  // 6. Debug log + throw
   console.error("[extractJSON] Parse failed. Raw (first 800 chars):", raw.slice(0, 800));
   throw new Error("Could not parse Gemini JSON response — try again");
 }
 
-// Repair truncated JSON by closing unclosed brackets/braces/strings
 function autoCloseJSON(str) {
-  const stack  = [];
+  const stack = [];
   let inString = false;
-  let escape   = false;
+  let escape = false;
   let lastGood = 0;
 
   for (let i = 0; i < str.length; i++) {
     const ch = str[i];
-    if (escape)        { escape = false; continue; }
-    if (ch === "\\") { escape = true;  continue; }
-    if (ch === '"')    { inString = !inString; if (!inString) lastGood = i; continue; }
-    if (inString)      continue;
+    if (escape) { escape = false; continue; }
+    if (ch === "\\") { escape = true; continue; }
+    if (ch === '"') { inString = !inString; if (!inString) lastGood = i; continue; }
+    if (inString) continue;
 
-    if      (ch === "{" || ch === "[")  { stack.push(ch); }
-    else if (ch === "}" || ch === "]")  { stack.pop(); if (stack.length === 0) lastGood = i; }
+    if (ch === "{" || ch === "[") { stack.push(ch); }
+    else if (ch === "}" || ch === "]") { stack.pop(); if (stack.length === 0) lastGood = i; }
     else if (!" \n\t,:".includes(ch)) { lastGood = i; }
   }
 
   let result = str.slice(0, lastGood + 1).trimEnd();
-  if (inString) result += '"';           // close dangling string
-  result = result.replace(/,\s*$/, ""); // strip trailing comma
+  if (inString) result += '"';          
+  result = result.replace(/,\s*$/, ""); 
   for (let i = stack.length - 1; i >= 0; i--) {
     result += stack[i] === "{" ? "}" : "]";
   }
   return result;
 }
 
-// ── Fallback result when API call fails ───────────────────────────────────────
 function fallbackResult(error) {
   return {
     overallScore: 0,
@@ -539,15 +524,12 @@ function scoreToGrade(score) {
 // ── PUBLIC API ────────────────────────────────────────────────────────────────
 
 /**
- * Analyze a CV using Google Gemini AI.
- * Async drop-in replacement for the old synchronous AnalyzerEngine.analyze().
- *
  * @param   {object}  cvData
  * @param   {object}  [options]
- * @param   {string}  [options.jobDescription]  - Raw text of job posting
- * @param   {string}  [options.industry]        - One of INDUSTRIES (default "general")
- * @param   {string}  [options.scanId]          - Optional pre-generated ID
- * @returns {Promise<object>}                   - Full analysis result
+ * @param   {string}  [options.jobDescription]  
+ * @param   {string}  [options.industry]       
+ * @param   {string}  [options.scanId]          
+ * @returns {Promise<object>}                  
  */
 export async function analyze(cvData, options = {}) {
   const {
@@ -556,7 +538,6 @@ export async function analyze(cvData, options = {}) {
     scanId = null,
   } = options;
 
-  // Shared envelope fields
   const envelope = {
     scanId: scanId || `scan_${Date.now().toString(36)}`,
     timestamp: Date.now(),
@@ -586,7 +567,6 @@ export async function analyze(cvData, options = {}) {
     return { ...envelope, meta: { ...envelope.meta, engine: "gemini-failed" }, ...fallbackResult(err) };
   }
 
-  // Merge AI fields into the envelope with type safety
   return {
     ...envelope,
 
@@ -614,6 +594,5 @@ export async function analyze(cvData, options = {}) {
   };
 }
 
-// Named object export — keeps AnalyzerPage import working without any changes
 export const AnalyzerEngine = { analyze, getIndustries, INDUSTRIES };
 export default AnalyzerEngine;

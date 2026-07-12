@@ -49,7 +49,6 @@ export function useUserLimits() {
     if (error) { console.error("[useUserLimits] fetch error:", error); setLoading(false); return; }
 
     if (!data) {
-      // Pehli baar — row create karo
       const { data: inserted } = await supabase
         .from("user_usage")
         .insert({ user_id: user.id, cv_builds: 0, analyses: 0 })
@@ -149,22 +148,18 @@ export function useUserLimits() {
   const remainingAnalysis = Math.max(0, DAILY_ANALYSIS_LIMIT - analysesUsed);
 
   return {
-    /* state */
     usage,
     loading,
-    /* CV limits */
     canBuildCV,
     remainingCV,
     dailyCVLimit:       DAILY_CV_LIMIT,
     getCVResetTime,
     incrementCV,
-    /* Analysis limits */
     canAnalyze,
     remainingAnalysis,
     dailyAnalysisLimit: DAILY_ANALYSIS_LIMIT,
     getAnalysisResetTime,
     incrementAnalysis,
-    /* refresh */
     refetch: fetchUsage,
   };
 }
