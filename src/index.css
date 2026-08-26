@@ -1,13 +1,15 @@
 @import "tailwindcss";
 
+@custom-variant dark (&:where(.dark, .dark *));
+
 /* ==========================
    1. Root & Fonts
 ========================== */
 @layer base {
   :root {
     /* Fonts */
-    --font-sans: 'Plus Jakarta Sans', 'Inter', sans-serif;
-    --font-display: 'Plus Jakarta Sans', sans-serif;
+    --font-sans: "Plus Jakarta Sans", "Inter", sans-serif;
+    --font-display: "Plus Jakarta Sans", sans-serif;
 
     /* Brand Colors */
     --brand-50: #eef2ff;
@@ -92,7 +94,6 @@
 
 /* Float Animations */
 @keyframes float {
-
   0%,
   100% {
     transform: translateY(0) rotate(0deg);
@@ -104,7 +105,6 @@
 }
 
 @keyframes floatDelay {
-
   0%,
   100% {
     transform: translateY(0) rotate(0deg);
@@ -263,21 +263,27 @@
 .reveal {
   opacity: 0;
   transform: translateY(40px);
-  transition: opacity 0.7s ease-out, transform 0.7s ease-out;
+  transition:
+    opacity 0.7s ease-out,
+    transform 0.7s ease-out;
 }
 
 /* Left se aaye */
 .reveal-left {
   opacity: 0;
   transform: translateX(-40px);
-  transition: opacity 0.7s ease-out, transform 0.7s ease-out;
+  transition:
+    opacity 0.7s ease-out,
+    transform 0.7s ease-out;
 }
 
 /* Right se aaye */
 .reveal-right {
   opacity: 0;
   transform: translateX(40px);
-  transition: opacity 0.7s ease-out, transform 0.7s ease-out;
+  transition:
+    opacity 0.7s ease-out,
+    transform 0.7s ease-out;
 }
 
 /* Visible state */
@@ -307,7 +313,6 @@
 
 /* Reduced motion */
 @media (prefers-reduced-motion: reduce) {
-
   .reveal,
   .reveal-left,
   .reveal-right {
@@ -414,6 +419,6 @@
   box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.2);
 }
 
-button{
+button {
   cursor: pointer;
 }
